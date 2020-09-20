@@ -3,9 +3,9 @@
 package reconcile
 
 import (
-	"github.com/keep94/finance/fin"
-	"github.com/keep94/finance/fin/autoimport/reconcile/match"
-	"github.com/keep94/finance/fin/findb"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/autoimport/reconcile/match"
+	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/toolbox/date_util"
 	"sort"
 	"time"

@@ -3,7 +3,7 @@ package categories
 import (
 	"container/heap"
 
-	"github.com/keep94/finance/fin"
+	"github.com/keep94/finances/fin"
 )
 
 // MostPopularFirst returns catDetails prepended with the most popular

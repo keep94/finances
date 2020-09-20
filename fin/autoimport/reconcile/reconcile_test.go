@@ -1,7 +1,7 @@
 package reconcile
 
 import (
-	"github.com/keep94/finance/fin"
+	"github.com/keep94/finances/fin"
 	"github.com/keep94/toolbox/date_util"
 	"reflect"
 	"testing"

@@ -4,9 +4,9 @@ package for_sqlite
 import (
 	"errors"
 	"fmt"
-	"github.com/keep94/finance/fin"
-	"github.com/keep94/finance/fin/consumers"
-	"github.com/keep94/finance/fin/findb"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/consumers"
+	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"

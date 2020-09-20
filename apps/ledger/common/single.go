@@ -3,8 +3,8 @@ package common
 import (
 	"errors"
 	"fmt"
-	"github.com/keep94/finance/fin"
-	"github.com/keep94/finance/fin/categories"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/categories"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/http_util"
 	"html/template"

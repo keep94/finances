@@ -3,7 +3,7 @@
 package fixture
 
 import (
-	"github.com/keep94/finance/fin/autoimport/qfx/qfxdb"
+	"github.com/keep94/finances/fin/autoimport/qfx/qfxdb"
 	"github.com/keep94/toolbox/db"
 	"reflect"
 	"testing"

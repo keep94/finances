@@ -1,4 +1,4 @@
-module github.com/keep94/finance
+module github.com/keep94/finances
 
 go 1.14
 

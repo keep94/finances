@@ -2,7 +2,7 @@
 package autoimport
 
 import (
-	"github.com/keep94/finance/fin"
+	"github.com/keep94/finances/fin"
 	"github.com/keep94/toolbox/db"
 	"io"
 	"time"

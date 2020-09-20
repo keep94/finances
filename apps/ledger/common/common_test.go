@@ -2,8 +2,8 @@ package common
 
 import (
 	"github.com/gorilla/sessions"
-	"github.com/keep94/finance/fin"
-	"github.com/keep94/finance/fin/autoimport"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/autoimport"
 	"github.com/keep94/toolbox/db"
 	"testing"
 )

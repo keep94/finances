@@ -2,10 +2,10 @@ package catedit
 
 import (
 	"fmt"
-	"github.com/keep94/finance/apps/ledger/common"
-	"github.com/keep94/finance/fin"
-	"github.com/keep94/finance/fin/categories"
-	"github.com/keep94/finance/fin/categories/categoriesdb"
+	"github.com/keep94/finances/apps/ledger/common"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/categories"
+	"github.com/keep94/finances/fin/categories/categoriesdb"
 	"github.com/keep94/toolbox/http_util"
 	"html/template"
 	"net/http"

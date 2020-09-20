@@ -1,7 +1,7 @@
 package aggregators
 
 import (
-	"github.com/keep94/finance/fin"
+	"github.com/keep94/finances/fin"
 	"testing"
 )
 

@@ -2,7 +2,7 @@ package common_test
 
 import (
 	"fmt"
-	"github.com/keep94/finance/apps/ledger/common"
+	"github.com/keep94/finances/apps/ledger/common"
 )
 
 func ExampleNormalizeYMDStr() {

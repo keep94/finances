@@ -3,7 +3,7 @@
 package for_sqlite
 
 import (
-	"github.com/keep94/finance/fin/autoimport/qfx/qfxdb"
+	"github.com/keep94/finances/fin/autoimport/qfx/qfxdb"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/db/sqlite_db"

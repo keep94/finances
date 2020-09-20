@@ -1,7 +1,7 @@
 package match_test
 
 import (
-	"github.com/keep94/finance/fin/autoimport/reconcile/match"
+	"github.com/keep94/finances/fin/autoimport/reconcile/match"
 	"reflect"
 	"testing"
 )

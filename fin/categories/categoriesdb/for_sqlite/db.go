@@ -2,9 +2,9 @@
 package for_sqlite
 
 import (
-	"github.com/keep94/finance/fin"
-	"github.com/keep94/finance/fin/categories"
-	fsqlite "github.com/keep94/finance/fin/findb/for_sqlite"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/categories"
+	fsqlite "github.com/keep94/finances/fin/findb/for_sqlite"
 	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db/sqlite_db"

@@ -1,10 +1,10 @@
 package csv_test
 
 import (
-	"github.com/keep94/finance/fin"
-	"github.com/keep94/finance/fin/autoimport"
-	"github.com/keep94/finance/fin/autoimport/csv"
-	"github.com/keep94/finance/fin/autoimport/qfx/qfxdb"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/autoimport"
+	"github.com/keep94/finances/fin/autoimport/csv"
+	"github.com/keep94/finances/fin/autoimport/qfx/qfxdb"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db"
 	"reflect"

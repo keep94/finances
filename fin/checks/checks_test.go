@@ -3,7 +3,7 @@ package checks_test
 import (
 	"testing"
 
-	"github.com/keep94/finance/fin/checks"
+	"github.com/keep94/finances/fin/checks"
 	"github.com/stretchr/testify/assert"
 )
 

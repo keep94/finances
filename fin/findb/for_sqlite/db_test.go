@@ -2,8 +2,8 @@ package for_sqlite
 
 import (
 	"errors"
-	"github.com/keep94/finance/fin/findb/fixture"
-	"github.com/keep94/finance/fin/findb/sqlite_setup"
+	"github.com/keep94/finances/fin/findb/fixture"
+	"github.com/keep94/finances/fin/findb/sqlite_setup"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db/sqlite_db"
 	"testing"

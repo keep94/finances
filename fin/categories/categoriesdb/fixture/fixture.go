@@ -3,10 +3,10 @@
 package fixture
 
 import (
-	"github.com/keep94/finance/fin"
-	"github.com/keep94/finance/fin/categories"
-	"github.com/keep94/finance/fin/categories/categoriesdb"
-	"github.com/keep94/finance/fin/findb"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/categories"
+	"github.com/keep94/finances/fin/categories/categoriesdb"
+	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/toolbox/db"
 	"reflect"
 	"testing"

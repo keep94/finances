@@ -3,7 +3,7 @@ package categories
 import (
 	"testing"
 
-	"github.com/keep94/finance/fin"
+	"github.com/keep94/finances/fin"
 )
 
 type catPopularities map[fin.Cat]int

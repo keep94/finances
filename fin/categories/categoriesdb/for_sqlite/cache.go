@@ -1,9 +1,9 @@
 package for_sqlite
 
 import (
-	"github.com/keep94/finance/fin"
-	"github.com/keep94/finance/fin/categories"
-	"github.com/keep94/finance/fin/categories/categoriesdb"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/categories"
+	"github.com/keep94/finances/fin/categories/categoriesdb"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/db/sqlite_db"

@@ -4,7 +4,7 @@ package categories
 import (
 	"errors"
 	"fmt"
-	"github.com/keep94/finance/fin"
+	"github.com/keep94/finances/fin"
 	"sort"
 	"strconv"
 	"strings"

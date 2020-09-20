@@ -5,8 +5,8 @@ package fixture
 import (
 	"errors"
 	"fmt"
-	"github.com/keep94/finance/fin"
-	"github.com/keep94/finance/fin/findb"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db"

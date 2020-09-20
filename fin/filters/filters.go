@@ -2,7 +2,7 @@
 package filters
 
 import (
-	"github.com/keep94/finance/fin"
+	"github.com/keep94/finances/fin"
 	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/str_util"
 	"strings"
