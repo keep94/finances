@@ -71,6 +71,20 @@ func (s EntrySplitType) ReconcileParam() string {
 	return fmt.Sprintf("reconciled-%d", int(s))
 }
 
+// InitializeForm initializes an empty form for creating a brand new entry.
+// If paymentId is non-zero, sets type payment combo box to the specified
+// paymentId.
+func InitializeForm(paymentId int64) url.Values {
+	values := make(url.Values)
+	if paymentId > 0 {
+		values.Set("payment", strconv.FormatInt(paymentId, 10))
+	}
+	for _, split := range entrySplits {
+		values.Set(split.CatParam(), fin.Expense.String())
+	}
+	return values
+}
+
 // ToSingleEntryView creates a view from a particular entry.
 // The caller may safely add additional name value pairs to the Values field
 // of returned view.
@@ -112,6 +126,8 @@ func ToSingleEntryView(
 			if catrecs[idx].Reconciled {
 				result.Set(split.ReconcileParam(), "on")
 			}
+		} else {
+			result.Set(split.CatParam(), fin.Expense.String())
 		}
 	}
 	return result

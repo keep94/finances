@@ -349,13 +349,9 @@ func (h *Handler) doGet(
 			catPopularity)
 	} else {
 		cds, _ := cdc.Get(nil)
-		values := make(url.Values)
-		if paymentId > 0 {
-			values.Set("payment", strconv.FormatInt(paymentId, 10))
-		}
 		v = h.toViewFromForm(
 			false,
-			values,
+			common.InitializeForm(paymentId),
 			common.NewXsrfToken(r, kRecurringSingle),
 			cds,
 			leftnav,

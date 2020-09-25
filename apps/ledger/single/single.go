@@ -11,7 +11,6 @@ import (
 	"github.com/keep94/toolbox/http_util"
 	"html/template"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 )
@@ -330,13 +329,9 @@ func (h *Handler) doGet(
 			leftnav)
 	} else {
 		cds, _ := cdc.Get(nil)
-		values := make(url.Values)
-		if paymentId > 0 {
-			values.Set("payment", strconv.FormatInt(paymentId, 10))
-		}
 		v = common.ToSingleEntryViewFromForm(
 			false,
-			values,
+			common.InitializeForm(paymentId),
 			common.NewXsrfToken(r, kSingle),
 			cds,
 			catPopularity,
