@@ -19,6 +19,6 @@ var (
 }
 .leftnav a {color:#0000FF}
 .leftnav a:hover {color:#FF00FF}
-.selected {color:#FF00FF}
+a.selected {color:#FF00FF}
 .main { margin-left: 210px; }`
 )

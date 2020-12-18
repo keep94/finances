@@ -24,62 +24,22 @@ Accounts:
 <ul>
 {{with $top := .}}
   {{range .ActiveAccountDetails}}
-    {{if $top.Account .Id}}
-      <li><span class="selected">{{.Name}}</span></li>
-    {{else}}
-      <li><a href="{{$top.AccountLink .Id}}">{{.Name}}</a></li>
-    {{end}}
+    <li><a {{if $top.Account .Id}}class="selected"{{end}} href="{{$top.AccountLink .Id}}">{{.Name}}</a></li>
   {{end}}
 {{end}}
 </ul>
 <br>
-{{if .Reports}}
-  <span class="selected">Reports</span><br>
-{{else}}
-  <a href="{{.ReportUrl}}">Reports</a><br>
-{{end}}
-{{if .Trends}}
-  <span class="selected">Trends</span><br>
-{{else}}
-  <a href="{{.TrendUrl}}">Trends</a><br>
-{{end}}
-{{if .Totals}}
-  <span class="selected">Totals</span><br>
-{{else}}
-  <a href="/fin/totals">Totals</a><br>
-{{end}}
+<a {{if .Reports}}class="selected"{{end}} href="{{.ReportUrl}}">Reports</a><br>
+<a {{if .Trends}}class="selected"{{end}} href="{{.TrendUrl}}">Trends</a><br>
+<a {{if .Totals}}class="selected"{{end}} href="/fin/totals">Totals</a><br>
 <br>
-{{if .Search}}
-  <span class="selected">Search</span><br>
-{{else}}
-  <a href="/fin/list">Search</a><br>
-{{end}}
-{{if .Unreviewed}}
-  <span class="selected">Review</span><br>
-{{else}}
-  <a href="/fin/unreviewed">Review</a><br>
-{{end}}
-{{if .Manage}}
-  <span class="selected">Manage Categories</span><br>
-{{else}}
-  <a href="/fin/catedit">Manage Categories</a><br>
-{{end}}
-{{if .Recurring}}
-  <span class="selected">Recurring</span><br>
-{{else}}
-  <a href="/fin/recurringlist">Recurring</a><br>
-{{end}}
-{{if .Export}}
-  <span class="selected">Export</span><br>
-{{else}}
-  <a href="/fin/export">Export</a><br>
-{{end}}
+<a {{if .Search}}class="selected"{{end}} href="/fin/list">Search</a><br>
+<a {{if .Unreviewed}}class="selected"{{end}} href="/fin/unreviewed">Review</a><br>
+<a {{if .Manage}}class="selected"{{end}} href="/fin/catedit">Manage Categories</a><br>
+<a {{if .Recurring}}class="selected"{{end}} href="/fin/recurringlist">Recurring</a><br>
+<a {{if .Export}}class="selected"{{end}} href="/fin/export">Export</a><br>
 <br>
-{{if .Chpasswd}}
-   <span class="selected">Change Password</span><br>
-{{else}}
-   <a href="/fin/chpasswd">Change Password</a><br>
-{{end}}
+<a {{if .Chpasswd}}class="selected"{{end}} href="/fin/chpasswd">Change Password</a><br>
 <a href="/fin/logout">Sign out</a>
 <br><br>
 </div>`
