@@ -256,7 +256,7 @@ func (h *Handler) singleCat(
 	// Only to see what the child categories are
 	ct := make(fin.CatTotals)
 	totals := createByPeriodTotaler(start, end, isYearly)
-	cr := goconsume.Filter(
+	cr := goconsume.MapFilter(
 		goconsume.Compose(
 			consumers.FromCatPaymentAggregator(ct),
 			consumers.FromEntryAggregator(totals)),
@@ -316,21 +316,18 @@ func (h *Handler) allCats(
 	ct := make(fin.CatTotals)
 	expenseTotals := createByPeriodTotaler(start, end, isYearly)
 	incomeTotals := createByPeriodTotaler(start, end, isYearly)
-	cr := goconsume.ComposeWithCopy(
-		[]goconsume.Consumer{
-			consumers.FromCatPaymentAggregator(ct),
-			goconsume.Filter(
-				consumers.FromEntryAggregator(expenseTotals),
-				filters.CompileAdvanceSearchSpec(
-					&filters.AdvanceSearchSpec{
-						CF: cds.Filter(fin.Expense, true)})),
-			goconsume.Filter(
-				consumers.FromEntryAggregator(incomeTotals),
-				filters.CompileAdvanceSearchSpec(
-					&filters.AdvanceSearchSpec{
-						CF: cds.Filter(fin.Income, true)})),
-		},
-		(*fin.Entry)(nil))
+	cr := goconsume.Compose(
+		consumers.FromCatPaymentAggregator(ct),
+		goconsume.MapFilter(
+			consumers.FromEntryAggregator(expenseTotals),
+			filters.CompileAdvanceSearchSpec(
+				&filters.AdvanceSearchSpec{
+					CF: cds.Filter(fin.Expense, true)})),
+		goconsume.MapFilter(
+			consumers.FromEntryAggregator(incomeTotals),
+			filters.CompileAdvanceSearchSpec(
+				&filters.AdvanceSearchSpec{
+					CF: cds.Filter(fin.Income, true)})))
 	elo := findb.EntryListOptions{
 		Start: &start,
 		End:   &end}

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/keep94/finances/fin"
-	"github.com/keep94/finances/fin/consumers"
+	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
@@ -135,15 +135,14 @@ func entriesByAccountId(conn *sqlite.Conn, acctId int64, account *fin.Account, c
 		return err
 	}
 	defer stmt.Finalize()
-	consumer = &consumers.AddBalance{
-		Balance: account.Balance, EntryBalanceConsumer: consumer}
 	consumer = goconsume.Slice(consumer, 0, account.Count)
-	consumer = goconsume.Filter(
+	consumer = goconsume.MapFilter(
 		consumer,
-		func(ptr interface{}) bool {
-			p := ptr.(*fin.Entry)
-			return p.WithPayment(acctId)
-		})
+		func(src, dest *fin.Entry) bool {
+			*dest = *src
+			return dest.WithPayment(acctId)
+		},
+		filters.WithBalance(account.Balance))
 	return sqlite_rw.ReadRows((&rawEntry{}).init(&fin.Entry{}), stmt, consumer)
 }
 
@@ -160,11 +159,11 @@ func unreconciledEntries(conn *sqlite.Conn, acctId int64, account *fin.Account, 
 	}
 	defer stmt.Finalize()
 	consumer = goconsume.Slice(consumer, 0, account.Count-account.RCount)
-	consumer = goconsume.Filter(
+	consumer = goconsume.MapFilter(
 		consumer,
-		func(ptr interface{}) bool {
-			p := ptr.(*fin.Entry)
-			return p.WithPayment(acctId) && !p.Reconciled()
+		func(src, dest *fin.Entry) bool {
+			*dest = *src
+			return dest.WithPayment(acctId) && !dest.Reconciled()
 		})
 	return sqlite_rw.ReadRows((&rawEntry{}).init(&fin.Entry{}), stmt, consumer)
 }

@@ -24,7 +24,7 @@ func BuildCatPopularity(
 	catPopularity *CatPopularity) goconsume.ConsumeFinalizer {
 	popularities := make(catPopularityMap)
 	consumer := goconsume.Slice(popularities, 0, maxEntriesToRead)
-	consumer = goconsume.Filter(consumer, nonTrivialCategories)
+	consumer = goconsume.MapFilter(consumer, nonTrivialCategories)
 	return &catPopularityConsumer{
 		Consumer: consumer, popularities: popularities, result: catPopularity}
 }
@@ -46,8 +46,7 @@ func (c catPopularityMap) Consume(ptr interface{}) {
 	}
 }
 
-func nonTrivialCategories(ptr interface{}) bool {
-	entry := ptr.(*Entry)
+func nonTrivialCategories(entry *Entry) bool {
 	if entry.CatRecCount() > 1 {
 		return true
 	}

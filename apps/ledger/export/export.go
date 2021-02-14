@@ -147,11 +147,11 @@ func (h *Handler) doPost(
 		csvWriter.Write(columns[:])
 	})
 	consumer = goconsume.Slice(consumer, 0, kMaxLines+1)
-	consumer = goconsume.Filter(
+	consumer = goconsume.MapFilter(
 		consumer,
-		func(ptr interface{}) bool {
-			p := ptr.(*fin.Entry)
-			return p.WithPayment(acctId)
+		func(src, dest *fin.Entry) bool {
+			*dest = *src
+			return dest.WithPayment(acctId)
 		})
 	err = h.Store.Entries(nil, elo, consumer)
 	if err == nil && !consumer.CanConsume() {

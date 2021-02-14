@@ -1,10 +1,25 @@
 package filters
 
 import (
+	"testing"
+
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/goconsume"
-	"testing"
+	"github.com/stretchr/testify/assert"
 )
+
+func TestWithBalance(t *testing.T) {
+	assert := assert.New(t)
+	withBalance := WithBalance(347)
+	var entry fin.Entry
+	var entryBalance fin.EntryBalance
+	entry = fin.Entry{CatPayment: makeTotal(-400)}
+	assert.True(withBalance(&entry, &entryBalance))
+	assert.Equal(int64(347), entryBalance.Balance)
+	entry = fin.Entry{CatPayment: makeTotal(-700)}
+	assert.True(withBalance(&entry, &entryBalance))
+	assert.Equal(int64(747), entryBalance.Balance)
+}
 
 func TestCompileAdvanceSearchSpec(t *testing.T) {
 	if output := runFilter(CompileAdvanceSearchSpec(
@@ -37,22 +52,26 @@ func TestCompileAdvanceSearchSpec(t *testing.T) {
 	}
 }
 
-func runFilter(f goconsume.FilterFunc) int {
+func runFilter(f goconsume.Applier) int {
 	result := 0
-	if f(&fin.Entry{Name: "Name 1", Desc: "Desc 1"}) {
+	if f.Apply(&fin.Entry{Name: "Name 1", Desc: "Desc 1"}) != nil {
 		result++
 	}
-	if f(&fin.Entry{Name: "Name 2", Desc: "Other"}) {
+	if f.Apply(&fin.Entry{Name: "Name 2", Desc: "Other"}) != nil {
 		result++
 	}
-	if f(&fin.Entry{Name: "Other", Desc: "Other"}) {
+	if f.Apply(&fin.Entry{Name: "Other", Desc: "Other"}) != nil {
 		result++
 	}
-	if f(&fin.Entry{
+	if f.Apply(&fin.Entry{
 		Name:       "Name 3",
 		Desc:       "Desc 3",
-		CatPayment: fin.NewCatPayment(fin.NewCat("0:7"), 200, false, 0)}) {
+		CatPayment: makeTotal(-200)}) != nil {
 		result++
 	}
 	return result
+}
+
+func makeTotal(total int64) fin.CatPayment {
+	return fin.NewCatPayment(fin.NewCat("0:7"), -total, false, 0)
 }

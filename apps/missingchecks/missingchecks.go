@@ -51,11 +51,9 @@ func main() {
 		nil,
 		accountDetail.Id(),
 		&account,
-		goconsume.Map(
+		goconsume.MapFilter(
 			goconsume.AppendTo(&checkNos),
-			func(srcPtr, destPtr interface{}) bool {
-				entryPtr := srcPtr.(*fin.EntryBalance)
-
+			func(entryPtr *fin.EntryBalance, checkNoPtr *int) bool {
 				// It can't be a valid check if it is a credit
 				if entryPtr.Total() > 0 {
 					return false
@@ -64,10 +62,9 @@ func main() {
 				if err != nil {
 					return false
 				}
-				*destPtr.(*int) = checkNo
+				*checkNoPtr = checkNo
 				return true
-			},
-			(*int)(nil)))
+			}))
 	missing := checks.Missing(checkNos)
 	if missing == nil {
 		fmt.Println("No checks found in account.")

@@ -457,7 +457,7 @@ func applyRecurringEntriesDryRun(
 	err error) {
 	consumer := goconsume.AppendPtrsTo(&recurringEntriesToUpdate)
 	if acctId != 0 {
-		consumer = goconsume.Filter(
+		consumer = goconsume.MapFilter(
 			consumer, accountFilter(acctId))
 	}
 	if err = store.RecurringEntries(t, consumer); err != nil {
@@ -474,10 +474,9 @@ func applyRecurringEntriesDryRun(
 	return
 }
 
-func accountFilter(acctId int64) goconsume.FilterFunc {
-	return func(ptr interface{}) bool {
-		re := ptr.(*fin.RecurringEntry)
-		cp := re.CatPayment
+func accountFilter(acctId int64) func(*fin.RecurringEntry) bool {
+	return func(ptr *fin.RecurringEntry) bool {
+		cp := ptr.CatPayment
 		return cp.WithPayment(acctId)
 	}
 }

@@ -219,7 +219,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			errorMessage = "Range must be of form 12.34 to 56.78."
 		}
 	}
-	var filter goconsume.FilterFunc
+	var filter goconsume.Applier
 	if amtFilter != nil || filt != nil || r.Form.Get("name") != "" || r.Form.Get("desc") != "" {
 		filter = filters.CompileAdvanceSearchSpec(&filters.AdvanceSearchSpec{
 			CF:   filt,
@@ -241,7 +241,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				consumers.FromCatPaymentAggregator(totaler),
 				cr)
 		}
-		cr = goconsume.Filter(cr, filter)
+		cr = goconsume.MapFilter(cr, filter)
 	}
 	var elo *findb.EntryListOptions
 	if sderr != nil || ederr != nil {

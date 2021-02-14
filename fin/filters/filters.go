@@ -8,6 +8,20 @@ import (
 	"strings"
 )
 
+// WithBalance returns a function that maps a fin.Entry to a fin.EntryBalance.
+// balance is the current balance of the account.
+// fin.Entry values must be passed to returned function from newest to oldest.
+// Returned function maps each fin.Entry value to a fin.EntryBalance value
+// that includes the balance at that fin.Entry value.
+func WithBalance(balance int64) func(*fin.Entry, *fin.EntryBalance) bool {
+	return func(src *fin.Entry, dest *fin.EntryBalance) bool {
+		dest.Entry = *src
+		dest.Balance = balance
+		balance -= src.Total()
+		return true
+	}
+}
+
 // AmountFilter filters by amount. Returns true if amt should be included or
 // false otherwise.
 type AmountFilter func(amt int64) bool
@@ -24,9 +38,9 @@ type AdvanceSearchSpec struct {
 }
 
 // CompileAdvanceSearchSpec compiles a search specification into a
-// functional.Filterer object.
-func CompileAdvanceSearchSpec(spec *AdvanceSearchSpec) goconsume.FilterFunc {
-	var filters []goconsume.FilterFunc
+// value for goconsume.MapFilter.
+func CompileAdvanceSearchSpec(spec *AdvanceSearchSpec) goconsume.Applier {
+	var filters []interface{}
 	if spec.CF != nil {
 		filters = append(filters, byCatFilterer(spec.CF))
 	}
@@ -39,33 +53,30 @@ func CompileAdvanceSearchSpec(spec *AdvanceSearchSpec) goconsume.FilterFunc {
 	if spec.Desc != "" {
 		filters = append(filters, byDescFilterer(str_util.Normalize(spec.Desc)))
 	}
-	return goconsume.All(filters...)
+	return goconsume.NewApplier(filters...)
 }
 
-func byCatFilterer(f fin.CatFilter) goconsume.FilterFunc {
-	return func(ptr interface{}) bool {
-		p := ptr.(*fin.Entry)
-		return p.WithCat(f)
+func byCatFilterer(f fin.CatFilter) func(src, dest *fin.Entry) bool {
+	return func(src, dest *fin.Entry) bool {
+		*dest = *src
+		return dest.WithCat(f)
 	}
 }
 
-func byAmountFilterer(f AmountFilter) goconsume.FilterFunc {
-	return func(ptr interface{}) bool {
-		p := ptr.(*fin.Entry)
-		return f(p.Total())
+func byAmountFilterer(f AmountFilter) func(*fin.Entry) bool {
+	return func(ptr *fin.Entry) bool {
+		return f(ptr.Total())
 	}
 }
 
-func byNameFilterer(name string) goconsume.FilterFunc {
-	return func(ptr interface{}) bool {
-		p := ptr.(*fin.Entry)
-		return strings.Index(str_util.Normalize(p.Name), name) != -1
+func byNameFilterer(name string) func(*fin.Entry) bool {
+	return func(ptr *fin.Entry) bool {
+		return strings.Index(str_util.Normalize(ptr.Name), name) != -1
 	}
 }
 
-func byDescFilterer(desc string) goconsume.FilterFunc {
-	return func(ptr interface{}) bool {
-		p := ptr.(*fin.Entry)
-		return strings.Index(str_util.Normalize(p.Desc), desc) != -1
+func byDescFilterer(desc string) func(*fin.Entry) bool {
+	return func(ptr *fin.Entry) bool {
+		return strings.Index(str_util.Normalize(ptr.Desc), desc) != -1
 	}
 }
