@@ -8,8 +8,12 @@ github.com/gorilla/sessions v1.2.1 h1:DHd3rPN5lE3Ts3D8rKkQ8x/0kqfeNmBAaiSi+o7Fsg
 github.com/gorilla/sessions v1.2.1/go.mod h1:dk2InVEVJ0sfLlnXv9EAgkf6ecYs/i80K/zI+bUmuGM=
 github.com/keep94/common v1.0.0 h1:hX4MySTB6EidCCxDjcwbCmq56xjQAasTpCEY6eBxlCA=
 github.com/keep94/common v1.0.0/go.mod h1:EntqjOWDwp8pluIIK921uIKHuHXbbv/odR/yz+YZf3M=
+github.com/keep94/common v1.0.1 h1:C2/fluO5iy1PJMugMFlwr9Hahjklg6AzTOnmgRQ0K9I=
+github.com/keep94/common v1.0.1/go.mod h1:EntqjOWDwp8pluIIK921uIKHuHXbbv/odR/yz+YZf3M=
 github.com/keep94/goconsume v1.0.1 h1:I09QZcioqIpa6JB93Z5fBsxeGj4p+Av5PhmODUNDHDM=
 github.com/keep94/goconsume v1.0.1/go.mod h1:fgvMjVV4vRhDbty/uxLgOw4jZwcxOKlidW35mmshYqE=
+github.com/keep94/goconsume v1.1.0 h1:zsUUyCaLZ9B9Hs7FBc4doPxezXyJ2FFHeRQsPZSPa/w=
+github.com/keep94/goconsume v1.1.0/go.mod h1:Z6/7vlHXJDYUNHP/mFZRfFUzK9AJATMWKfWZ5nHuNfE=
 github.com/keep94/gofunctional3 v1.0.0 h1:1OccHeUS6m0r/5CxdfWLgffLsytppVny9KuXyD3n9gY=
 github.com/keep94/gofunctional3 v1.0.0/go.mod h1:rImP7wOgyBnOls7RQzR60luYfyR4Efrl4U96K8BJlRQ=
 github.com/keep94/gosqlite v1.0.0 h1:wYAuan8F3qu/nfqllQTOg7fPlRQGXXc3Bw7mfo7JiyY=
