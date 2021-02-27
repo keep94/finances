@@ -46,10 +46,9 @@ func TestCatPopularity(t *testing.T) {
 	assert.False(consumer.CanConsume())
 	assert.Panics(func() { consumer.Consume(&entry) })
 
-	assert.Equal(1, popularities.Popularity(Expense))
-	assert.Equal(2, popularities.Popularity(NewCat("0:3")))
-	assert.Equal(1, popularities.Popularity(NewCat("0:4")))
-	assert.Equal(0, popularities.Popularity(NewCat("0:2")))
+	assert.Equal(
+		CatPopularity{Expense: 1, NewCat("0:3"): 2, NewCat("0:4"): 1},
+		popularities)
 
 	// test idempotency of Finalize
 	popularities = nil
@@ -63,8 +62,5 @@ func TestCatPopularity(t *testing.T) {
 	assert.False(consumer.CanConsume())
 	assert.Panics(func() { consumer.Consume(&entry) })
 
-	assert.Equal(0, popularities.Popularity(Expense))
-	assert.Equal(0, popularities.Popularity(NewCat("0:3")))
-	assert.Equal(0, popularities.Popularity(NewCat("0:4")))
-	assert.Equal(0, popularities.Popularity(NewCat("0:2")))
+	assert.Equal(CatPopularity{}, popularities)
 }

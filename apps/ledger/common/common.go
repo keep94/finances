@@ -151,7 +151,7 @@ func (s *UserSession) CatPopularity() fin.CatPopularity {
 }
 
 // SetCatPopularity stores the category popularities in the session.
-// Passing nil for cp indicates there are not category popularities.
+// Passing nil for cp indicates there are no category popularities.
 func (s *UserSession) SetCatPopularity(cp fin.CatPopularity) {
 	if cp == nil {
 		delete(s.Values, kCatPopularityKey)

@@ -11,8 +11,6 @@ import (
 // prepends len(catDetails)*mostPopularRatio categories, but will not prepend
 // more than maxMostPopularCount categories if maxMostPopularCount is >= 0.
 // Categories with a popularity of 0 are never prepended.
-// If catPopularity is nil, then MostPopularFirst just returns a copy of
-// catDetails.
 func MostPopularFirst(
 	catDetails []CatDetail,
 	catPopularity fin.CatPopularity,
@@ -21,20 +19,13 @@ func MostPopularFirst(
 	if mostPopularRatio < 0.0 || mostPopularRatio > 1.0 {
 		panic("mostPopularRatio must be between 0.0 and 1.0")
 	}
-	if catPopularity == nil {
-
-		// Just return a copy of catDetails
-		result := make([]CatDetail, 0, len(catDetails))
-		result = append(result, catDetails...)
-		return result
-	}
 	mostPopularCount := int(float64(len(catDetails)) * mostPopularRatio)
 	if maxMostPopularCount >= 0 && mostPopularCount > maxMostPopularCount {
 		mostPopularCount = maxMostPopularCount
 	}
 	var h catDetailWithCountHeap
 	for _, catDetail := range catDetails {
-		count := catPopularity.Popularity(catDetail.Id())
+		count := catPopularity[catDetail.Id()]
 		if count > 0 {
 			if h.Len() == mostPopularCount {
 				pushAndPop(&h, catDetailWithCount{cd: catDetail, count: count})

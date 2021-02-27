@@ -4,14 +4,10 @@ import (
 	"github.com/keep94/goconsume"
 )
 
-// CatPopularity tells the popularity of each category
-type CatPopularity interface {
-
-	// Popularity returns the popularity of the category as a value greater than
-	// or equal to zero. The higher the return value the more popular the
-	// category.
-	Popularity(cat Cat) int
-}
+// CatPopularity values are immutable by contract. The key is the category;
+// the value is greater than or equal to zero and indicates popularity of
+// the category.
+type CatPopularity map[Cat]int
 
 // BuildCatPopularity returns a consumer that consumes Entry values to
 // build a CatPopularity instance. The returned consumer consumes at most
@@ -30,10 +26,6 @@ func BuildCatPopularity(
 }
 
 type catPopularityMap map[Cat]int
-
-func (c catPopularityMap) Popularity(cat Cat) int {
-	return c[cat]
-}
 
 func (c catPopularityMap) CanConsume() bool {
 	return true
@@ -69,5 +61,5 @@ func (c *catPopularityConsumer) Finalize() {
 	}
 	c.finalized = true
 	c.Consumer = goconsume.Nil()
-	*c.result = c.popularities
+	*c.result = CatPopularity(c.popularities)
 }

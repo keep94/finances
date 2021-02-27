@@ -6,14 +6,8 @@ import (
 	"github.com/keep94/finances/fin"
 )
 
-type catPopularities map[fin.Cat]int
-
-func (c catPopularities) Popularity(cat fin.Cat) int {
-	return c[cat]
-}
-
 func TestMostPopularFirst(t *testing.T) {
-	popularities := catPopularities{
+	popularities := fin.CatPopularity{
 		toCat("0:1"): 5,
 		toCat("0:2"): 4,
 		toCat("0:3"): 3,
@@ -29,7 +23,12 @@ func TestMostPopularFirst(t *testing.T) {
 		createCatDetail(toCat("0:2"), "", true),
 		createCatDetail(toCat("0:5"), "", true),
 	}
-	result := MostPopularFirst(catDetails, popularities, 0.8, -1)
+	result := MostPopularFirst(catDetails, popularities, 0.6, -1)
+	verifyCatDetailList(
+		t,
+		result, "0:1", "0:2", "0:3", "0:4",
+		"0:3", "0:6", "0:1", "0:7", "0:4", "0:2", "0:5")
+	result = MostPopularFirst(catDetails, popularities, 0.8, -1)
 	verifyCatDetailList(
 		t,
 		result, "0:1", "0:2", "0:3", "0:4", "0:5",
