@@ -2,18 +2,19 @@
 package qfx
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
-	"github.com/keep94/finances/fin"
-	"github.com/keep94/finances/fin/autoimport"
-	"github.com/keep94/finances/fin/autoimport/qfx/qfxdb"
-	"github.com/keep94/gofunctional3/functional"
-	"github.com/keep94/toolbox/date_util"
-	"github.com/keep94/toolbox/db"
 	"io"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/autoimport"
+	"github.com/keep94/finances/fin/autoimport/qfx/qfxdb"
+	"github.com/keep94/toolbox/date_util"
+	"github.com/keep94/toolbox/db"
 )
 
 const (
@@ -31,39 +32,6 @@ var (
 	kXMLTagPattern    = regexp.MustCompile(`</?[A-Z]+>`)
 )
 
-// byXMLToken returns a stream of [2]string given a QFX XML body.
-// The first string is the XML open or close tag; the second string is
-// the contents. The caller must call Close() on the returned stream.
-func byXMLToken(contents []byte) functional.Stream {
-	return functional.NewGenerator(func(e functional.Emitter) error {
-		var ptr interface{}
-		var opened bool
-		if ptr, opened = e.EmitPtr(); !opened {
-			return nil
-		}
-		allTagIndexes := kXMLTagPattern.FindAllIndex(contents, -1)
-		tagCount := len(allTagIndexes)
-		if tagCount == 0 {
-			functional.WaitForClose(e)
-			return nil
-		}
-		for i := 0; i < tagCount-1; i++ {
-			tagSlice := ptr.([]string)
-			tagSlice[0] = string(contents[allTagIndexes[i][0]:allTagIndexes[i][1]])
-			tagSlice[1] = string(contents[allTagIndexes[i][1]:allTagIndexes[i+1][0]])
-			if ptr, opened = e.Return(nil); !opened {
-				return nil
-			}
-		}
-		tagSlice := ptr.([]string)
-		tagSlice[0] = string(contents[allTagIndexes[tagCount-1][0]:allTagIndexes[tagCount-1][1]])
-		tagSlice[1] = string(contents[allTagIndexes[tagCount-1][1]:])
-		e.Return(nil)
-		functional.WaitForClose(e)
-		return nil
-	})
-}
-
 // QFXLoader implements the autoimport.Loader interface for QFX files.
 type QFXLoader struct {
 	// Store stores which fitIds, unique identifier in QFX files,
@@ -76,12 +44,13 @@ func (q QFXLoader) Load(
 	bankAccountId string,
 	r io.Reader,
 	startDate time.Time) (autoimport.Batch, error) {
-	fileStream := functional.ReadLines(r)
+	scanner := bufio.NewScanner(r)
 	var line string
 	var err error
 
 	// skip over QFX headers for now
-	for err = fileStream.Next(&line); err == nil; err = fileStream.Next(&line) {
+	for scanner.Scan() {
+		line = scanner.Text()
 		if !kQFXHeaderPattern.MatchString(line) {
 			break
 		}
@@ -89,28 +58,35 @@ func (q QFXLoader) Load(
 
 	// Load the XML body into this buffer
 	var qfxContents bytes.Buffer
-
-	for ; err == nil; err = fileStream.Next(&line) {
+	for scanner.Scan() {
+		line = scanner.Text()
 		line = strings.TrimSpace(line)
 		qfxContents.Write([]byte(line))
 	}
 
 	// Return any errors from reading the file.
-	if err != functional.Done {
+	if err = scanner.Err(); err != nil {
 		return nil, err
 	}
 
 	// We break the XML body into a stream of tags and contents.
-	tagStream := byXMLToken(qfxContents.Bytes())
-	defer tagStream.Close()
+	xmlContents := qfxContents.Bytes()
+	allTagIndexes := kXMLTagPattern.FindAllIndex(xmlContents, -1)
+	tagCount := len(allTagIndexes)
 
 	qe := &QfxEntry{}
 	var result []*QfxEntry
-	var tagAndContents [2]string
 	var readName, readMemo string
-	for err = tagStream.Next(tagAndContents[:]); err == nil; err = tagStream.Next(tagAndContents[:]) {
-		tag := tagAndContents[0]
-		contents := tagAndContents[1]
+
+	for i := 0; i < tagCount; i++ {
+		tag := string(xmlContents[allTagIndexes[i][0]:allTagIndexes[i][1]])
+		var contents string
+		if i+1 < tagCount {
+			contents = string(
+				xmlContents[allTagIndexes[i][1]:allTagIndexes[i+1][0]])
+		} else {
+			contents = string(xmlContents[allTagIndexes[i][1]:])
+		}
 		if tag == kDtPosted {
 			qe.Date, err = parseQFXDate(contents)
 			if err != nil {

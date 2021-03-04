@@ -1,23 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"flag"
 	"fmt"
-	"github.com/keep94/finances/fin"
-	"github.com/keep94/finances/fin/aggregators"
-	"github.com/keep94/finances/fin/categories"
-	csqlite "github.com/keep94/finances/fin/categories/categoriesdb/for_sqlite"
-	"github.com/keep94/finances/fin/consumers"
-	"github.com/keep94/finances/fin/filters"
-	"github.com/keep94/finances/fin/findb"
-	"github.com/keep94/finances/fin/findb/for_sqlite"
-	"github.com/keep94/goconsume"
-	"github.com/keep94/gofunctional3/functional"
-	"github.com/keep94/gosqlite/sqlite"
-	"github.com/keep94/toolbox/date_util"
-	"github.com/keep94/toolbox/db/sqlite_db"
-	"github.com/keep94/toolbox/google_graph"
 	"html/template"
 	"log"
 	"mime/multipart"
@@ -27,6 +14,20 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/aggregators"
+	"github.com/keep94/finances/fin/categories"
+	csqlite "github.com/keep94/finances/fin/categories/categoriesdb/for_sqlite"
+	"github.com/keep94/finances/fin/consumers"
+	"github.com/keep94/finances/fin/filters"
+	"github.com/keep94/finances/fin/findb"
+	"github.com/keep94/finances/fin/findb/for_sqlite"
+	"github.com/keep94/goconsume"
+	"github.com/keep94/gosqlite/sqlite"
+	"github.com/keep94/toolbox/date_util"
+	"github.com/keep94/toolbox/db/sqlite_db"
+	"github.com/keep94/toolbox/google_graph"
 )
 
 const (
@@ -185,9 +186,10 @@ func readGraphSpec(cds categories.CatDetailStore, path string) []*graphSpec {
 		log.Fatal(err)
 	}
 	defer f.Close()
-	s := functional.ReadLines(f)
+	scanner := bufio.NewScanner(f)
 	var line string
-	for s.Next(&line) == nil {
+	for scanner.Scan() {
+		line = scanner.Text()
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
