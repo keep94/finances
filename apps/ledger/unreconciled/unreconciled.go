@@ -83,7 +83,7 @@ var (
 )
 
 type Store interface {
-	findb.UnreconciledEntriesRunner
+	findb.EntriesByAccountIdRunner
 	findb.DoEntryChangesRunner
 }
 
@@ -139,7 +139,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	account := fin.Account{}
 	err := h.Doer.Do(func(t db.Transaction) (err error) {
 		cds, _ = cache.Get(t)
-		return store.UnreconciledEntries(t, acctId, &account, consumer)
+		return findb.UnreconciledEntries(t, store, acctId, &account, consumer)
 	})
 	if err == findb.NoSuchId {
 		fmt.Fprintln(w, "No such account.")

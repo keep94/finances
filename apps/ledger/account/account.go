@@ -115,7 +115,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		err = h.Store.EntriesByAccountId(t, id, &account, consumer)
+		err = findb.EntriesByAccountId(t, h.Store, id, &account, consumer)
 		if err != nil {
 			return
 		}

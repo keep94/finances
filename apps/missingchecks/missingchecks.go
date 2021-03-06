@@ -10,9 +10,11 @@ import (
 	"github.com/keep94/finances/fin"
 	csqlite "github.com/keep94/finances/fin/categories/categoriesdb/for_sqlite"
 	"github.com/keep94/finances/fin/checks"
+	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
 	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
+	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/db/sqlite_db"
 )
 
@@ -36,6 +38,7 @@ func main() {
 	}
 	dbase := sqlite_db.New(conn)
 	defer dbase.Close()
+	doer := sqlite_db.NewDoer(dbase)
 	cache := csqlite.New(dbase)
 	store := for_sqlite.New(dbase)
 	cds, _ := cache.Get(nil)
@@ -47,24 +50,30 @@ func main() {
 	}
 	var account fin.Account
 	var checkNos []int
-	store.EntriesByAccountId(
-		nil,
-		accountDetail.Id(),
-		&account,
-		goconsume.MapFilter(
-			goconsume.AppendTo(&checkNos),
-			func(entryPtr *fin.EntryBalance, checkNoPtr *int) bool {
-				// It can't be a valid check if it is a credit
-				if entryPtr.Total() > 0 {
-					return false
-				}
-				checkNo, err := strconv.Atoi(entryPtr.CheckNo)
-				if err != nil {
-					return false
-				}
-				*checkNoPtr = checkNo
-				return true
-			}))
+	err = doer.Do(func(t db.Transaction) error {
+		return findb.EntriesByAccountId(
+			t,
+			store,
+			accountDetail.Id(),
+			&account,
+			goconsume.MapFilter(
+				goconsume.AppendTo(&checkNos),
+				func(entryPtr *fin.EntryBalance, checkNoPtr *int) bool {
+					// It can't be a valid check if it is a credit
+					if entryPtr.Total() > 0 {
+						return false
+					}
+					checkNo, err := strconv.Atoi(entryPtr.CheckNo)
+					if err != nil {
+						return false
+					}
+					*checkNoPtr = checkNo
+					return true
+				}))
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 	missing := checks.Missing(checkNos)
 	if missing == nil {
 		fmt.Println("No checks found in account.")

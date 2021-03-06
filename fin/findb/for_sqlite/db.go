@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/keep94/finances/fin"
-	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
@@ -123,51 +122,6 @@ func _entryById(stmt *sqlite.Stmt, r *rawEntry, id int64) error {
 	return sqlite_rw.FirstOnly(r, stmt, findb.NoSuchId)
 }
 
-func entriesByAccountId(conn *sqlite.Conn, acctId int64, account *fin.Account, consumer goconsume.Consumer) error {
-	if account == nil {
-		account = &fin.Account{}
-	}
-	if err := accountById(conn, acctId, account); err != nil {
-		return err
-	}
-	stmt, err := conn.Prepare(kSQLEntries)
-	if err != nil {
-		return err
-	}
-	defer stmt.Finalize()
-	consumer = goconsume.Slice(consumer, 0, account.Count)
-	consumer = goconsume.MapFilter(
-		consumer,
-		func(src, dest *fin.Entry) bool {
-			*dest = *src
-			return dest.WithPayment(acctId)
-		},
-		filters.WithBalance(account.Balance))
-	return sqlite_rw.ReadRows((&rawEntry{}).init(&fin.Entry{}), stmt, consumer)
-}
-
-func unreconciledEntries(conn *sqlite.Conn, acctId int64, account *fin.Account, consumer goconsume.Consumer) error {
-	if account == nil {
-		account = &fin.Account{}
-	}
-	if err := accountById(conn, acctId, account); err != nil {
-		return err
-	}
-	stmt, err := conn.Prepare(kSQLEntries)
-	if err != nil {
-		return err
-	}
-	defer stmt.Finalize()
-	consumer = goconsume.Slice(consumer, 0, account.Count-account.RCount)
-	consumer = goconsume.MapFilter(
-		consumer,
-		func(src, dest *fin.Entry) bool {
-			*dest = *src
-			return dest.WithPayment(acctId) && !dest.Reconciled()
-		})
-	return sqlite_rw.ReadRows((&rawEntry{}).init(&fin.Entry{}), stmt, consumer)
-}
-
 func doEntryChanges(conn *sqlite.Conn, changes *findb.EntryChanges) error {
 	row := (&rawEntry{}).init(&fin.Entry{})
 	var err error
@@ -268,15 +222,6 @@ func doEntryChanges(conn *sqlite.Conn, changes *findb.EntryChanges) error {
 		}
 	}
 	return recordAccountDeltas(conn, deltas)
-}
-
-func accountById(conn *sqlite.Conn, acctId int64, account *fin.Account) error {
-	return sqlite_rw.ReadSingle(
-		conn,
-		(&rawAccount{}).init(account),
-		findb.NoSuchId,
-		kSQLAccountById,
-		acctId)
 }
 
 func activeAccounts(conn *sqlite.Conn) (accounts []*fin.Account, err error) {
@@ -574,7 +519,12 @@ type Store struct {
 func (s Store) AccountById(
 	t db.Transaction, acctId int64, account *fin.Account) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return accountById(conn, acctId, account)
+		return sqlite_rw.ReadSingle(
+			conn,
+			(&rawAccount{}).init(account),
+			findb.NoSuchId,
+			kSQLAccountById,
+			acctId)
 	})
 }
 
@@ -617,26 +567,10 @@ func (s Store) Entries(
 	})
 }
 
-func (s Store) EntriesByAccountId(
-	t db.Transaction, acctId int64, account *fin.Account,
-	consumer goconsume.Consumer) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return entriesByAccountId(conn, acctId, account, consumer)
-	})
-}
-
 func (s Store) EntryById(
 	t db.Transaction, id int64, entry *fin.Entry) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return entryById(conn, id, entry)
-	})
-}
-
-func (s Store) UnreconciledEntries(
-	t db.Transaction, acctId int64,
-	account *fin.Account, consumer goconsume.Consumer) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return unreconciledEntries(conn, acctId, account, consumer)
 	})
 }
 
@@ -788,21 +722,9 @@ func (s ReadOnlyStore) Entries(
 	return s.store.Entries(t, options, consumer)
 }
 
-func (s ReadOnlyStore) EntriesByAccountId(
-	t db.Transaction, acctId int64, account *fin.Account,
-	consumer goconsume.Consumer) error {
-	return s.store.EntriesByAccountId(t, acctId, account, consumer)
-}
-
 func (s ReadOnlyStore) EntryById(
 	t db.Transaction, id int64, entry *fin.Entry) error {
 	return s.store.EntryById(t, id, entry)
-}
-
-func (s ReadOnlyStore) UnreconciledEntries(
-	t db.Transaction, acctId int64,
-	account *fin.Account, consumer goconsume.Consumer) error {
-	return s.store.UnreconciledEntries(t, acctId, account, consumer)
 }
 
 func (s ReadOnlyStore) UserById(

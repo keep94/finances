@@ -58,11 +58,6 @@ type EntriesByAccountIdStore interface {
 	findb.EntriesByAccountIdRunner
 }
 
-type UnreconciledEntriesStore interface {
-	MinimalStore
-	findb.UnreconciledEntriesRunner
-}
-
 type ActiveAccountsStore interface {
 	MinimalStore
 	findb.ActiveAccountsRunner
@@ -295,9 +290,9 @@ func (f EntryAccountFixture) EntriesByAccountId(
 	t *testing.T, store EntriesByAccountIdStore) {
 	f.createAccounts(t, store)
 	createListEntries(t, store)
-	verifyEntriesByAccountId(t, store, 1, 2)
-	verifyEntriesByAccountId(t, store, 2, 3)
-	if err := entriesByAccountIdError(t, store, 9999); err != findb.NoSuchId {
+	f.verifyEntriesByAccountId(t, store, 1, 2)
+	f.verifyEntriesByAccountId(t, store, 2, 3)
+	if err := f.entriesByAccountIdError(t, store, 9999); err != findb.NoSuchId {
 		t.Errorf("Expected NoSuchId, got %v", err)
 	}
 }
@@ -307,8 +302,10 @@ func (f EntryAccountFixture) EntriesByAccountIdNilPtr(
 	f.createAccounts(t, store)
 	createListEntries(t, store)
 	var entriesWithBalance []fin.EntryBalance
-	err := store.EntriesByAccountId(
-		nil, 1, nil, goconsume.AppendTo(&entriesWithBalance))
+	err := f.Doer.Do(func(t db.Transaction) error {
+		return findb.EntriesByAccountId(
+			t, store, 1, nil, goconsume.AppendTo(&entriesWithBalance))
+	})
 	if err != nil {
 		t.Fatalf("Got error reading database: %v", err)
 	}
@@ -321,22 +318,25 @@ func (f EntryAccountFixture) EntriesByAccountIdNilPtr(
 }
 
 func (f EntryAccountFixture) UnreconciledEntries(
-	t *testing.T, store UnreconciledEntriesStore) {
+	t *testing.T, store EntriesByAccountIdStore) {
 	f.createAccounts(t, store)
 	createListEntries(t, store)
-	verifyUnreconciledEntries(t, store, 1, 1)
-	verifyUnreconciledEntries(t, store, 2, 2)
-	if err := unreconciledEntriesError(t, store, 9999); err != findb.NoSuchId {
+	f.verifyUnreconciledEntries(t, store, 1, 1)
+	f.verifyUnreconciledEntries(t, store, 2, 2)
+	if err := f.unreconciledEntriesError(t, store, 9999); err != findb.NoSuchId {
 		t.Errorf("Expected NoSuchId, got %v", err)
 	}
 }
 
 func (f EntryAccountFixture) UnreconciledEntriesNoAccount(
-	t *testing.T, store UnreconciledEntriesStore) {
+	t *testing.T, store EntriesByAccountIdStore) {
 	f.createAccounts(t, store)
 	createListEntries(t, store)
 	var entries []fin.Entry
-	store.UnreconciledEntries(nil, 1, nil, goconsume.AppendTo(&entries))
+	f.Doer.Do(func(t db.Transaction) error {
+		return findb.UnreconciledEntries(
+			t, store, 1, nil, goconsume.AppendTo(&entries))
+	})
 }
 
 func (f EntryAccountFixture) ConcurrentUpdateDetection(
@@ -660,7 +660,7 @@ func (f EntryAccountFixture) ApplyRecurringEntries(
 	verifyRecurringEntry(t, store, valentinesDayId, date_util.YMD(2016, 2, 14), -1)
 
 	// verify entries
-	verifyEntryDates(t, store, 1,
+	f.verifyEntryDates(t, store, 1,
 		-103000, 14,
 		date_util.YMD(2015, 11, 10), date_util.YMD(2015, 11, 5),
 		date_util.YMD(2015, 10, 22), date_util.YMD(2015, 10, 14),
@@ -696,6 +696,124 @@ func (f EntryAccountFixture) createAccounts(t *testing.T, store findb.AddAccount
 	})
 	if err != nil {
 		t.Fatalf("Error creating accounts: %v", err)
+	}
+}
+
+func (f EntryAccountFixture) verifyUnreconciledEntries(
+	t *testing.T,
+	store findb.EntriesByAccountIdRunner,
+	acct_id int64,
+	expected_number int) {
+	var entries []fin.Entry
+	var account fin.Account
+	err := f.Doer.Do(func(t db.Transaction) error {
+		return findb.UnreconciledEntries(
+			t, store, acct_id, &account, goconsume.AppendTo(&entries))
+	})
+	if err != nil {
+		t.Errorf("Got error reading database: %v", err)
+		return
+	}
+	if len(entries) != expected_number {
+		t.Errorf("Expected %v entries, got %v", expected_number, len(entries))
+	}
+	verifyEntriesSorted(t, entries)
+	var sum int64
+	for i := range entries {
+		entry := &entries[i]
+		if entry.PaymentId() != acct_id {
+			t.Errorf("Expected account %v, got %v", acct_id, entry.PaymentId())
+		}
+		if entry.Reconciled() {
+			t.Error("Expected only unreconciled entries.")
+		}
+		sum += entry.Total()
+	}
+	if output := account.RBalance + sum; output != account.Balance {
+		t.Errorf("Expected balance %v, got %v", account.Balance, output)
+	}
+}
+
+func (f EntryAccountFixture) unreconciledEntriesError(
+	t *testing.T,
+	store findb.EntriesByAccountIdRunner,
+	acct_id int64) error {
+	var entries []fin.Entry
+	var account fin.Account
+	return f.Doer.Do(func(t db.Transaction) error {
+		return findb.UnreconciledEntries(
+			t, store, acct_id, &account, goconsume.AppendTo(&entries))
+	})
+}
+
+func (f EntryAccountFixture) verifyEntriesByAccountId(
+	t *testing.T,
+	store findb.EntriesByAccountIdRunner,
+	acct_id int64,
+	expected_number int) {
+	var entries []fin.EntryBalance
+	var account fin.Account
+	err := f.Doer.Do(func(t db.Transaction) error {
+		return findb.EntriesByAccountId(
+			t, store, acct_id, &account, goconsume.AppendTo(&entries))
+	})
+	if err != nil {
+		t.Errorf("Got error reading database: %v", err)
+		return
+	}
+	if len(entries) != expected_number {
+		t.Errorf("Expected %v entries, got %v", expected_number, len(entries))
+	}
+	verifyEntryBalanceSorted(t, entries)
+	verifyEntryBalances(t, acct_id, account.Balance, entries)
+}
+
+func (f EntryAccountFixture) entriesByAccountIdError(
+	t *testing.T,
+	store findb.EntriesByAccountIdRunner,
+	acct_id int64) error {
+	var entries []fin.EntryBalance
+	var account fin.Account
+	return f.Doer.Do(func(t db.Transaction) error {
+		return findb.EntriesByAccountId(
+			t, store, acct_id, &account, goconsume.AppendTo(&entries))
+	})
+}
+
+func (f EntryAccountFixture) verifyEntryDates(
+	t *testing.T,
+	store findb.EntriesByAccountIdRunner,
+	accountId int64,
+	expectedAccountBalance int64,
+	expectedCount int,
+	expectedDates ...time.Time) {
+	var entries []*fin.EntryBalance
+	var account fin.Account
+	err := f.Doer.Do(func(t db.Transaction) error {
+		return findb.EntriesByAccountId(
+			t,
+			store,
+			accountId,
+			&account,
+			goconsume.AppendPtrsTo(&entries))
+	})
+	if err != nil {
+		t.Fatalf("Error retrieving added entries: %v", err)
+	}
+	if len(expectedDates) != len(entries) {
+		t.Errorf("Expected %d entries, got %d", len(expectedDates), len(entries))
+		return
+	}
+	for i := range entries {
+		if entries[i].Date != expectedDates[i] {
+			t.Errorf("Expected %v, got %v", expectedDates[i], entries[i].Date)
+		}
+	}
+	if expectedAccountBalance != account.Balance {
+		t.Errorf("Expected %v, got %v", expectedAccountBalance, account.Balance)
+	}
+	if expectedCount != account.Count {
+		t.Errorf("Expected %v, got %v", expectedCount, account.Count)
 	}
 }
 
@@ -863,79 +981,6 @@ func verifyNoEntry(t *testing.T, store findb.EntryByIdRunner, id int64) {
 	}
 }
 
-func verifyEntriesByAccountId(
-	t *testing.T,
-	store findb.EntriesByAccountIdRunner,
-	acct_id int64,
-	expected_number int) {
-	var entries []fin.EntryBalance
-	account := fin.Account{}
-	err := store.EntriesByAccountId(
-		nil, acct_id, &account, goconsume.AppendTo(&entries))
-	if err != nil {
-		t.Errorf("Got error reading database: %v", err)
-		return
-	}
-	if len(entries) != expected_number {
-		t.Errorf("Expected %v entries, got %v", expected_number, len(entries))
-	}
-	verifyEntryBalanceSorted(t, entries)
-	verifyEntryBalances(t, acct_id, account.Balance, entries)
-}
-
-func entriesByAccountIdError(
-	t *testing.T,
-	store findb.EntriesByAccountIdRunner,
-	acct_id int64) error {
-	var entries []fin.EntryBalance
-	account := fin.Account{}
-	return store.EntriesByAccountId(
-		nil, acct_id, &account, goconsume.AppendTo(&entries))
-}
-
-func verifyUnreconciledEntries(
-	t *testing.T,
-	store findb.UnreconciledEntriesRunner,
-	acct_id int64,
-	expected_number int) {
-	var entries []fin.Entry
-	account := fin.Account{}
-	err := store.UnreconciledEntries(
-		nil, acct_id, &account, goconsume.AppendTo(&entries))
-	if err != nil {
-		t.Errorf("Got error reading database: %v", err)
-		return
-	}
-	if len(entries) != expected_number {
-		t.Errorf("Expected %v entries, got %v", expected_number, len(entries))
-	}
-	verifyEntriesSorted(t, entries)
-	var sum int64
-	for i := range entries {
-		entry := &entries[i]
-		if entry.PaymentId() != acct_id {
-			t.Errorf("Expected account %v, got %v", acct_id, entry.PaymentId())
-		}
-		if entry.Reconciled() {
-			t.Error("Expected only unreconciled entries.")
-		}
-		sum += entry.Total()
-	}
-	if output := account.RBalance + sum; output != account.Balance {
-		t.Errorf("Expected balance %v, got %v", account.Balance, output)
-	}
-}
-
-func unreconciledEntriesError(
-	t *testing.T,
-	store findb.UnreconciledEntriesRunner,
-	acct_id int64) error {
-	var entries []fin.Entry
-	account := fin.Account{}
-	return store.UnreconciledEntries(
-		nil, acct_id, &account, goconsume.AppendTo(&entries))
-}
-
 func verifyEntriesSorted(t *testing.T, entries []fin.Entry) {
 	length := len(entries)
 	for i := 1; i < length; i++ {
@@ -986,39 +1031,6 @@ func verifyNoRecurringEntry(
 	var entry fin.RecurringEntry
 	if err := store.RecurringEntryById(nil, id, &entry); err != findb.NoSuchId {
 		t.Errorf("Expected error findb.NoSuchId, got %v", err)
-	}
-}
-
-func verifyEntryDates(
-	t *testing.T,
-	store findb.EntriesByAccountIdRunner,
-	accountId int64,
-	expectedAccountBalance int64,
-	expectedCount int,
-	expectedDates ...time.Time) {
-	var entries []*fin.EntryBalance
-	var account fin.Account
-	if err := store.EntriesByAccountId(
-		nil,
-		accountId,
-		&account,
-		goconsume.AppendPtrsTo(&entries)); err != nil {
-		t.Fatalf("Error retrieving added entries: %v", err)
-	}
-	if len(expectedDates) != len(entries) {
-		t.Errorf("Expected %d entries, got %d", len(expectedDates), len(entries))
-		return
-	}
-	for i := range entries {
-		if entries[i].Date != expectedDates[i] {
-			t.Errorf("Expected %v, got %v", expectedDates[i], entries[i].Date)
-		}
-	}
-	if expectedAccountBalance != account.Balance {
-		t.Errorf("Expected %v, got %v", expectedAccountBalance, account.Balance)
-	}
-	if expectedCount != account.Count {
-		t.Errorf("Expected %v, got %v", expectedCount, account.Count)
 	}
 }
 

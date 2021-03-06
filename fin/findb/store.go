@@ -3,10 +3,16 @@ package findb
 
 import (
 	"errors"
+	"time"
+
 	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/db"
-	"time"
+)
+
+const (
+	kNonNilTransactionRequired = "non nil transaction required"
 )
 
 var (
@@ -67,26 +73,73 @@ type EntriesRunner interface {
 }
 
 type EntriesByAccountIdRunner interface {
-	// EntryByAccountId gets entries by account from most to least recent.
-	// acctId is the account ID; account is where
-	// Account object is stored; consumer consumes the fin.EntryBalance
-	// values.
-	EntriesByAccountId(t db.Transaction, acctId int64,
-		account *fin.Account, consumer goconsume.Consumer) error
+	EntriesRunner
+	AccountByIdRunner
+}
+
+// UnreconciledEntries gets unreconciled entries by account Id from most
+// to least recent. t is the database transaction and must be non-nil;
+// store is the database store; acctId is the account ID; account,
+// which can be nil, is where Account object is stored; consumer
+// consumes the fin.Entry values.
+func UnreconciledEntries(
+	t db.Transaction,
+	store EntriesByAccountIdRunner,
+	acctId int64,
+	account *fin.Account,
+	consumer goconsume.Consumer) error {
+	if t == nil {
+		panic(kNonNilTransactionRequired)
+	}
+	if account == nil {
+		account = &fin.Account{}
+	}
+	if err := store.AccountById(t, acctId, account); err != nil {
+		return err
+	}
+	consumer = goconsume.Slice(consumer, 0, account.Count-account.RCount)
+	consumer = goconsume.MapFilter(
+		consumer,
+		func(src, dest *fin.Entry) bool {
+			*dest = *src
+			return dest.WithPayment(acctId) && !dest.Reconciled()
+		})
+	return store.Entries(t, nil, consumer)
+}
+
+// EntriesByAccountId gets entries by account id from most to least recent.
+// acctId is the account ID; account, which can be nil, is where Account
+// object is stored; consumer consumes the fin.EntryBalance values.
+// t must be non-nil.
+func EntriesByAccountId(
+	t db.Transaction,
+	store EntriesByAccountIdRunner,
+	acctId int64,
+	account *fin.Account,
+	consumer goconsume.Consumer) error {
+	if t == nil {
+		panic(kNonNilTransactionRequired)
+	}
+	if account == nil {
+		account = &fin.Account{}
+	}
+	if err := store.AccountById(t, acctId, account); err != nil {
+		return err
+	}
+	consumer = goconsume.Slice(consumer, 0, account.Count)
+	consumer = goconsume.MapFilter(
+		consumer,
+		func(src, dest *fin.Entry) bool {
+			*dest = *src
+			return dest.WithPayment(acctId)
+		},
+		filters.WithBalance(account.Balance))
+	return store.Entries(t, nil, consumer)
 }
 
 type EntryByIdRunner interface {
 	// EntryById fetches an Entry by id.
 	EntryById(t db.Transaction, id int64, entry *fin.Entry) error
-}
-
-type UnreconciledEntriesRunner interface {
-	// UnreconciledEntries gets unreconciled entries by account from most to least
-	// recent.
-	// acctId is the account ID; account, which can be nil, is where
-	// Account object is stored; consumer consumes the fin.Entry values
-	UnreconciledEntries(t db.Transaction, acctId int64,
-		account *fin.Account, consumer goconsume.Consumer) error
 }
 
 type AddRecurringEntryRunner interface {
@@ -221,19 +274,8 @@ func (n NoPermissionStore) Entries(t db.Transaction, options *EntryListOptions,
 	return NoPermission
 }
 
-func (n NoPermissionStore) EntriesByAccountId(t db.Transaction, acctId int64,
-	account *fin.Account, consumer goconsume.Consumer) error {
-	return NoPermission
-}
-
 func (n NoPermissionStore) EntryById(
 	t db.Transaction, id int64, entry *fin.Entry) error {
-	return NoPermission
-}
-
-func (n NoPermissionStore) UnreconciledEntries(
-	t db.Transaction, acctId int64, account *fin.Account,
-	consumer goconsume.Consumer) error {
 	return NoPermission
 }
 
@@ -313,7 +355,7 @@ func SkipRecurringEntry(
 	store RecurringEntrySkipper,
 	id int64) (bool, error) {
 	if t == nil {
-		panic("non nil transaction required.")
+		panic(kNonNilTransactionRequired)
 	}
 	var entry fin.RecurringEntry
 	if err := store.RecurringEntryById(t, id, &entry); err != nil {
@@ -339,7 +381,7 @@ func ApplyRecurringEntry(
 	store RecurringEntryApplier,
 	id int64) (bool, error) {
 	if t == nil {
-		panic("non nil transaction required.")
+		panic(kNonNilTransactionRequired)
 	}
 	var entry fin.RecurringEntry
 	if err := store.RecurringEntryById(t, id, &entry); err != nil {
@@ -392,7 +434,7 @@ func ApplyRecurringEntries(
 	acctId int64,
 	currentDate time.Time) (int, error) {
 	if t == nil {
-		panic("non nil transaction required.")
+		panic(kNonNilTransactionRequired)
 	}
 	recurringEntries, entries, err := applyRecurringEntriesDryRun(
 		t, store, acctId, currentDate)
@@ -428,7 +470,7 @@ func LoginUser(
 	currentTime time.Time,
 	user *fin.User) error {
 	if t == nil {
-		panic("non nil transaction required.")
+		panic(kNonNilTransactionRequired)
 	}
 	if err := store.UserByName(t, userName, user); err != nil {
 		return err

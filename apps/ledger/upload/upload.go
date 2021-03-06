@@ -128,10 +128,8 @@ var (
 )
 
 type Store interface {
-	findb.AccountByIdRunner
-	findb.EntriesRunner
 	findb.DoEntryChangesRunner
-	findb.UnreconciledEntriesRunner
+	findb.EntriesByAccountIdRunner
 	findb.UpdateAccountImportSDRunner
 }
 
@@ -163,11 +161,14 @@ func (h *Handler) serveConfirmPageGet(
 	store Store) {
 	account := fin.Account{}
 	unreconciled := make(reconcile.ByAmountCheckNo)
-	err := store.UnreconciledEntries(
-		nil,
-		acctId,
-		&account,
-		consumers.FromEntryAggregator(unreconciled))
+	err := h.Doer.Do(func(t db.Transaction) error {
+		return findb.UnreconciledEntries(
+			t,
+			store,
+			acctId,
+			&account,
+			consumers.FromEntryAggregator(unreconciled))
+	})
 	if err != nil {
 		http_util.ReportError(
 			w, "A database error happened fetching unreconciled entries", err)
@@ -218,8 +219,9 @@ func (h *Handler) serveConfirmPage(w http.ResponseWriter, r *http.Request, acctI
 					return
 				}
 				unreconciled := make(reconcile.ByAmountCheckNo)
-				err = store.UnreconciledEntries(
+				err = findb.UnreconciledEntries(
 					t,
+					store,
 					acctId,
 					nil,
 					consumers.FromEntryAggregator(unreconciled))
