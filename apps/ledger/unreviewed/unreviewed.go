@@ -2,11 +2,11 @@ package unreviewed
 
 import (
 	"fmt"
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	"github.com/keep94/finances/fin/findb"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/http_util"
 	"html/template"
@@ -199,8 +199,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	entries := make([]fin.Entry, 0, h.PageSize)
-	consumer := goconsume.AppendTo(&entries)
-	consumer = goconsume.Slice(consumer, 0, h.PageSize)
+	consumer := consume.AppendTo(&entries)
+	consumer = consume.Slice(consumer, 0, h.PageSize)
 	cds := categories.CatDetailStore{}
 	err := h.Doer.Do(func(t db.Transaction) error {
 		cds, _ = cache.Get(t)

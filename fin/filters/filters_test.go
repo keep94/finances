@@ -3,8 +3,8 @@ package filters
 import (
 	"testing"
 
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/fin"
-	"github.com/keep94/goconsume"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,18 +52,18 @@ func TestCompileAdvanceSearchSpec(t *testing.T) {
 	}
 }
 
-func runFilter(f goconsume.Applier) int {
+func runFilter(f consume.MapFilterer) int {
 	result := 0
-	if f.Apply(&fin.Entry{Name: "Name 1", Desc: "Desc 1"}) != nil {
+	if f.MapFilter(&fin.Entry{Name: "Name 1", Desc: "Desc 1"}) != nil {
 		result++
 	}
-	if f.Apply(&fin.Entry{Name: "Name 2", Desc: "Other"}) != nil {
+	if f.MapFilter(&fin.Entry{Name: "Name 2", Desc: "Other"}) != nil {
 		result++
 	}
-	if f.Apply(&fin.Entry{Name: "Other", Desc: "Other"}) != nil {
+	if f.MapFilter(&fin.Entry{Name: "Other", Desc: "Other"}) != nil {
 		result++
 	}
-	if f.Apply(&fin.Entry{
+	if f.MapFilter(&fin.Entry{
 		Name:       "Name 3",
 		Desc:       "Desc 3",
 		CatPayment: makeTotal(-200)}) != nil {

@@ -2,8 +2,8 @@
 package consumers
 
 import (
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/fin"
-	"github.com/keep94/goconsume"
 )
 
 // CatPaymentAggregator aggregates CatPayment values.
@@ -19,14 +19,14 @@ type EntryAggregator interface {
 // FromCatPaymentAggregator converts a CatPaymentAggregator to a Consumer of
 // fin.Entry values.
 func FromCatPaymentAggregator(
-	aggregator CatPaymentAggregator) goconsume.Consumer {
+	aggregator CatPaymentAggregator) consume.Consumer {
 	return entryAggregatorConsumer{aggregator: catPaymentToEntryAggregator{aggregator}}
 }
 
 // FromEntryAggregator converts a EntryAggregator to a Consumer of
 // fin.Entry values.
 func FromEntryAggregator(
-	aggregator EntryAggregator) goconsume.Consumer {
+	aggregator EntryAggregator) consume.Consumer {
 	return entryAggregatorConsumer{aggregator: aggregator}
 }
 

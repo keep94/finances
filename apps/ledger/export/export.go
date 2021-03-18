@@ -5,12 +5,12 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	"github.com/keep94/finances/fin/categories/categoriesdb"
 	"github.com/keep94/finances/fin/findb"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/http_util"
 	"html/template"
@@ -136,8 +136,8 @@ func (h *Handler) doPost(
 	columns[3] = "Desc"
 	columns[4] = "Amount"
 	csvWriter.Write(columns[:])
-	var consumer goconsume.Consumer
-	consumer = goconsume.ConsumerFunc(func(ptr interface{}) {
+	var consumer consume.Consumer
+	consumer = consume.ConsumerFunc(func(ptr interface{}) {
 		entry := ptr.(*fin.Entry)
 		columns[0] = entry.Date.Format("1/2/2006")
 		columns[1] = entry.CheckNo
@@ -146,8 +146,8 @@ func (h *Handler) doPost(
 		columns[4] = fin.FormatUSD(-entry.Total())
 		csvWriter.Write(columns[:])
 	})
-	consumer = goconsume.Slice(consumer, 0, kMaxLines+1)
-	consumer = goconsume.MapFilter(
+	consumer = consume.Slice(consumer, 0, kMaxLines+1)
+	consumer = consume.MapFilter(
 		consumer,
 		func(src, dest *fin.Entry) bool {
 			*dest = *src

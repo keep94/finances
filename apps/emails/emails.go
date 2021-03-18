@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/aggregators"
 	"github.com/keep94/finances/fin/categories"
@@ -23,7 +24,6 @@ import (
 	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db/sqlite_db"
@@ -108,7 +108,7 @@ func (b *balanceInfo) Net() int64 {
 
 type graphSpec struct {
 	Title  string
-	Filter goconsume.Applier
+	Filter consume.MapFilterer
 }
 
 type graphData struct {
@@ -156,15 +156,15 @@ func newDateFilter(start, end time.Time) func(*fin.Entry) bool {
 }
 
 func newConsumer(
-	filter goconsume.Applier,
-	total *aggregators.Totaler) goconsume.Consumer {
-	return goconsume.MapFilter(
+	filter consume.MapFilterer,
+	total *aggregators.Totaler) consume.Consumer {
+	return consume.MapFilter(
 		consumers.FromCatPaymentAggregator(total),
 		filter)
 }
 
 func byCatFilterer(
-	cds categories.CatDetailStore, name string) goconsume.Applier {
+	cds categories.CatDetailStore, name string) consume.MapFilterer {
 	detail, ok := cds.DetailByFullName(name)
 	if !ok {
 		return nil
@@ -174,7 +174,7 @@ func byCatFilterer(
 }
 
 func byCatIdFilterer(
-	cds categories.CatDetailStore, id fin.Cat) goconsume.Applier {
+	cds categories.CatDetailStore, id fin.Cat) consume.MapFilterer {
 	return filters.CompileAdvanceSearchSpec(
 		&filters.AdvanceSearchSpec{CF: cds.Filter(id, true)})
 }
@@ -204,11 +204,11 @@ func readGraphSpec(cds categories.CatDetailStore, path string) []*graphSpec {
 }
 
 type reporter struct {
-	takers []goconsume.Consumer
+	takers []consume.Consumer
 }
 
 func (r *reporter) ComputeTotal(
-	filter goconsume.Applier) *aggregators.Totaler {
+	filter consume.MapFilterer) *aggregators.Totaler {
 	result := &aggregators.Totaler{}
 	r.takers = append(
 		r.takers,
@@ -226,13 +226,13 @@ func (r *reporter) ComputeTotals(spec []*graphSpec, start, end time.Time) []*agg
 		}
 		r.takers = append(
 			r.takers,
-			newConsumer(goconsume.NewApplier(dateFilter, spec[i].Filter), result[i]))
+			newConsumer(consume.NewMapFilterer(dateFilter, spec[i].Filter), result[i]))
 	}
 	return result
 }
 
-func (r *reporter) ToConsumer() goconsume.Consumer {
-	return goconsume.Compose(r.takers...)
+func (r *reporter) ToConsumer() consume.Consumer {
+	return consume.Compose(r.takers...)
 }
 
 func toTable(gd google_graph.GraphData2D) [][]string {
@@ -356,13 +356,13 @@ func main() {
 	expenseFilter := byCatIdFilterer(cds, fin.Expense)
 	incomeFilter := byCatIdFilterer(cds, fin.Income)
 	monthExpense := r.ComputeTotal(
-		goconsume.NewApplier(lastMonthFilter, expenseFilter))
+		consume.NewMapFilterer(lastMonthFilter, expenseFilter))
 	monthIncome := r.ComputeTotal(
-		goconsume.NewApplier(lastMonthFilter, incomeFilter))
+		consume.NewMapFilterer(lastMonthFilter, incomeFilter))
 	ytdExpense := r.ComputeTotal(
-		goconsume.NewApplier(ytdFilter, expenseFilter))
+		consume.NewMapFilterer(ytdFilter, expenseFilter))
 	ytdIncome := r.ComputeTotal(
-		goconsume.NewApplier(ytdFilter, incomeFilter))
+		consume.NewMapFilterer(ytdFilter, incomeFilter))
 
 	startTime := currentYear
 	if prevMonth.Before(startTime) {

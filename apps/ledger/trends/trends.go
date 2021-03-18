@@ -2,6 +2,7 @@ package trends
 
 import (
 	"errors"
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/aggregators"
@@ -10,7 +11,6 @@ import (
 	"github.com/keep94/finances/fin/consumers"
 	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/google_graph"
 	"github.com/keep94/toolbox/http_util"
@@ -256,8 +256,8 @@ func (h *Handler) singleCat(
 	// Only to see what the child categories are
 	ct := make(fin.CatTotals)
 	totals := createByPeriodTotaler(start, end, isYearly)
-	cr := goconsume.MapFilter(
-		goconsume.Compose(
+	cr := consume.MapFilter(
+		consume.Compose(
 			consumers.FromCatPaymentAggregator(ct),
 			consumers.FromEntryAggregator(totals)),
 		filters.CompileAdvanceSearchSpec(
@@ -316,14 +316,14 @@ func (h *Handler) allCats(
 	ct := make(fin.CatTotals)
 	expenseTotals := createByPeriodTotaler(start, end, isYearly)
 	incomeTotals := createByPeriodTotaler(start, end, isYearly)
-	cr := goconsume.Compose(
+	cr := consume.Compose(
 		consumers.FromCatPaymentAggregator(ct),
-		goconsume.MapFilter(
+		consume.MapFilter(
 			consumers.FromEntryAggregator(expenseTotals),
 			filters.CompileAdvanceSearchSpec(
 				&filters.AdvanceSearchSpec{
 					CF: cds.Filter(fin.Expense, true)})),
-		goconsume.MapFilter(
+		consume.MapFilter(
 			consumers.FromEntryAggregator(incomeTotals),
 			filters.CompileAdvanceSearchSpec(
 				&filters.AdvanceSearchSpec{

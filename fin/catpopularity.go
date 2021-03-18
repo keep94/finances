@@ -1,7 +1,7 @@
 package fin
 
 import (
-	"github.com/keep94/goconsume"
+	"github.com/keep94/consume"
 )
 
 // CatPopularity values are immutable by contract. The key is the category;
@@ -17,10 +17,10 @@ type CatPopularity map[Cat]int
 // instance to be stored at catPopularity.
 func BuildCatPopularity(
 	maxEntriesToRead int,
-	catPopularity *CatPopularity) goconsume.ConsumeFinalizer {
+	catPopularity *CatPopularity) consume.ConsumeFinalizer {
 	popularities := make(catPopularityMap)
-	consumer := goconsume.Slice(popularities, 0, maxEntriesToRead)
-	consumer = goconsume.MapFilter(consumer, nonTrivialCategories)
+	consumer := consume.Slice(popularities, 0, maxEntriesToRead)
+	consumer = consume.MapFilter(consumer, nonTrivialCategories)
 	return &catPopularityConsumer{
 		Consumer: consumer, popularities: popularities, result: catPopularity}
 }
@@ -49,7 +49,7 @@ func nonTrivialCategories(entry *Entry) bool {
 }
 
 type catPopularityConsumer struct {
-	goconsume.Consumer
+	consume.Consumer
 	popularities catPopularityMap
 	result       *CatPopularity
 	finalized    bool
@@ -60,6 +60,6 @@ func (c *catPopularityConsumer) Finalize() {
 		return
 	}
 	c.finalized = true
-	c.Consumer = goconsume.Nil()
+	c.Consumer = consume.Nil()
 	*c.result = CatPopularity(c.popularities)
 }

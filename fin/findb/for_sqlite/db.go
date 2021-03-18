@@ -4,9 +4,9 @@ package for_sqlite
 import (
 	"errors"
 	"fmt"
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/findb"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/db/sqlite_db"
@@ -57,7 +57,7 @@ func ReadOnlyWrapper(store Store) ReadOnlyStore {
 	return ReadOnlyStore{store: store}
 }
 
-func entries(conn *sqlite.Conn, options *findb.EntryListOptions, consumer goconsume.Consumer) error {
+func entries(conn *sqlite.Conn, options *findb.EntryListOptions, consumer consume.Consumer) error {
 	var sql string
 	if options != nil {
 		where_clauses := make([]string, 3)
@@ -228,7 +228,7 @@ func activeAccounts(conn *sqlite.Conn) (accounts []*fin.Account, err error) {
 	err = sqlite_rw.ReadMultiple(
 		conn,
 		(&rawAccount{}).init(&fin.Account{}),
-		goconsume.AppendPtrsTo(&accounts),
+		consume.AppendPtrsTo(&accounts),
 		kSQLActiveAccounts)
 	return
 }
@@ -529,7 +529,7 @@ func (s Store) AccountById(
 }
 
 func (s Store) Accounts(
-	t db.Transaction, consumer goconsume.Consumer) error {
+	t db.Transaction, consumer consume.Consumer) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return sqlite_rw.ReadMultiple(
 			conn, (&rawAccount{}).init(&fin.Account{}), consumer, kSQLAccounts)
@@ -561,7 +561,7 @@ func (s Store) DoEntryChanges(
 
 func (s Store) Entries(
 	t db.Transaction, options *findb.EntryListOptions,
-	consumer goconsume.Consumer) error {
+	consumer consume.Consumer) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return entries(conn, options, consumer)
 	})
@@ -641,7 +641,7 @@ func (s Store) UserByName(
 }
 
 func (s Store) Users(
-	t db.Transaction, consumer goconsume.Consumer) error {
+	t db.Transaction, consumer consume.Consumer) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return sqlite_rw.ReadMultiple(
 			conn, (&rawUser{}).init(&fin.User{}), consumer, kSQLUsers)
@@ -680,7 +680,7 @@ func (s Store) RecurringEntryById(
 }
 
 func (s Store) RecurringEntries(
-	t db.Transaction, consumer goconsume.Consumer) error {
+	t db.Transaction, consumer consume.Consumer) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
 		return sqlite_rw.ReadMultiple(
 			conn,
@@ -707,7 +707,7 @@ func (s ReadOnlyStore) AccountById(
 }
 
 func (s ReadOnlyStore) Accounts(
-	t db.Transaction, consumer goconsume.Consumer) error {
+	t db.Transaction, consumer consume.Consumer) error {
 	return s.store.Accounts(t, consumer)
 }
 
@@ -718,7 +718,7 @@ func (s ReadOnlyStore) ActiveAccounts(t db.Transaction) (
 
 func (s ReadOnlyStore) Entries(
 	t db.Transaction, options *findb.EntryListOptions,
-	consumer goconsume.Consumer) error {
+	consumer consume.Consumer) error {
 	return s.store.Entries(t, options, consumer)
 }
 
@@ -738,7 +738,7 @@ func (s ReadOnlyStore) UserByName(
 }
 
 func (s ReadOnlyStore) Users(
-	t db.Transaction, consumer goconsume.Consumer) error {
+	t db.Transaction, consumer consume.Consumer) error {
 	return s.store.Users(t, consumer)
 }
 
@@ -748,6 +748,6 @@ func (s ReadOnlyStore) RecurringEntryById(
 }
 
 func (s ReadOnlyStore) RecurringEntries(
-	t db.Transaction, consumer goconsume.Consumer) error {
+	t db.Transaction, consumer consume.Consumer) error {
 	return s.store.RecurringEntries(t, consumer)
 }

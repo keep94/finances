@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/filters"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/db"
 )
 
@@ -29,7 +29,7 @@ type AccountByIdRunner interface {
 
 type AccountsRunner interface {
 	// Accounts fetches all accounts.
-	Accounts(t db.Transaction, consumer goconsume.Consumer) error
+	Accounts(t db.Transaction, consumer consume.Consumer) error
 }
 
 type ActiveAccountsRunner interface {
@@ -69,7 +69,7 @@ type EntriesRunner interface {
 	// options is additional options for getting entries, may be nil;
 	// consumer consumes the fin.Entry values.
 	Entries(t db.Transaction, options *EntryListOptions,
-		consumer goconsume.Consumer) error
+		consumer consume.Consumer) error
 }
 
 type EntriesByAccountIdRunner interface {
@@ -87,7 +87,7 @@ func UnreconciledEntries(
 	store EntriesByAccountIdRunner,
 	acctId int64,
 	account *fin.Account,
-	consumer goconsume.Consumer) error {
+	consumer consume.Consumer) error {
 	if t == nil {
 		panic(kNonNilTransactionRequired)
 	}
@@ -97,8 +97,8 @@ func UnreconciledEntries(
 	if err := store.AccountById(t, acctId, account); err != nil {
 		return err
 	}
-	consumer = goconsume.Slice(consumer, 0, account.Count-account.RCount)
-	consumer = goconsume.MapFilter(
+	consumer = consume.Slice(consumer, 0, account.Count-account.RCount)
+	consumer = consume.MapFilter(
 		consumer,
 		func(src, dest *fin.Entry) bool {
 			*dest = *src
@@ -116,7 +116,7 @@ func EntriesByAccountId(
 	store EntriesByAccountIdRunner,
 	acctId int64,
 	account *fin.Account,
-	consumer goconsume.Consumer) error {
+	consumer consume.Consumer) error {
 	if t == nil {
 		panic(kNonNilTransactionRequired)
 	}
@@ -126,8 +126,8 @@ func EntriesByAccountId(
 	if err := store.AccountById(t, acctId, account); err != nil {
 		return err
 	}
-	consumer = goconsume.Slice(consumer, 0, account.Count)
-	consumer = goconsume.MapFilter(
+	consumer = consume.Slice(consumer, 0, account.Count)
+	consumer = consume.MapFilter(
 		consumer,
 		func(src, dest *fin.Entry) bool {
 			*dest = *src
@@ -161,7 +161,7 @@ type RecurringEntryByIdRunner interface {
 type RecurringEntriesRunner interface {
 	// RecurringEntries gets all the recurring entries sorted by date
 	// in ascending order.
-	RecurringEntries(t db.Transaction, consumer goconsume.Consumer) error
+	RecurringEntries(t db.Transaction, consumer consume.Consumer) error
 }
 
 type RemoveRecurringEntryByIdRunner interface {
@@ -191,7 +191,7 @@ type UserByNameRunner interface {
 
 type UsersRunner interface {
 	//Users gets all the users sorted by user name.
-	Users(t db.Transaction, consumer goconsume.Consumer) error
+	Users(t db.Transaction, consumer consume.Consumer) error
 }
 
 type RemoveUserByNameRunner interface {
@@ -235,7 +235,7 @@ func (n NoPermissionStore) AccountById(
 }
 
 func (n NoPermissionStore) Accounts(
-	t db.Transaction, consumer goconsume.Consumer) error {
+	t db.Transaction, consumer consume.Consumer) error {
 	return NoPermission
 }
 
@@ -270,7 +270,7 @@ func (n NoPermissionStore) DoEntryChanges(
 }
 
 func (n NoPermissionStore) Entries(t db.Transaction, options *EntryListOptions,
-	consumer goconsume.Consumer) error {
+	consumer consume.Consumer) error {
 	return NoPermission
 }
 
@@ -295,7 +295,7 @@ func (n NoPermissionStore) RecurringEntryById(
 }
 
 func (n NoPermissionStore) RecurringEntries(
-	t db.Transaction, consumer goconsume.Consumer) error {
+	t db.Transaction, consumer consume.Consumer) error {
 	return NoPermission
 }
 
@@ -320,7 +320,7 @@ func (n NoPermissionStore) UserByName(t db.Transaction, name string, user *fin.U
 	return NoPermission
 }
 
-func (n NoPermissionStore) Users(t db.Transaction, consumer goconsume.Consumer) error {
+func (n NoPermissionStore) Users(t db.Transaction, consumer consume.Consumer) error {
 	return NoPermission
 }
 
@@ -497,9 +497,9 @@ func applyRecurringEntriesDryRun(
 	recurringEntriesToUpdate []*fin.RecurringEntry,
 	entriesToAdd []*fin.Entry,
 	err error) {
-	consumer := goconsume.AppendPtrsTo(&recurringEntriesToUpdate)
+	consumer := consume.AppendPtrsTo(&recurringEntriesToUpdate)
 	if acctId != 0 {
-		consumer = goconsume.MapFilter(
+		consumer = consume.MapFilter(
 			consumer, accountFilter(acctId))
 	}
 	if err = store.RecurringEntries(t, consumer); err != nil {

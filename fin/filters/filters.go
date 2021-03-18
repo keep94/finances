@@ -2,8 +2,8 @@
 package filters
 
 import (
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/fin"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/str_util"
 	"strings"
 )
@@ -37,9 +37,8 @@ type AdvanceSearchSpec struct {
 	AF AmountFilter
 }
 
-// CompileAdvanceSearchSpec compiles a search specification into a
-// value for goconsume.MapFilter.
-func CompileAdvanceSearchSpec(spec *AdvanceSearchSpec) goconsume.Applier {
+// CompileAdvanceSearchSpec compiles a search specification.
+func CompileAdvanceSearchSpec(spec *AdvanceSearchSpec) consume.MapFilterer {
 	var filters []interface{}
 	if spec.CF != nil {
 		filters = append(filters, byCatFilterer(spec.CF))
@@ -53,7 +52,7 @@ func CompileAdvanceSearchSpec(spec *AdvanceSearchSpec) goconsume.Applier {
 	if spec.Desc != "" {
 		filters = append(filters, byDescFilterer(str_util.Normalize(spec.Desc)))
 	}
-	return goconsume.NewApplier(filters...)
+	return consume.NewMapFilterer(filters...)
 }
 
 func byCatFilterer(f fin.CatFilter) func(src, dest *fin.Entry) bool {

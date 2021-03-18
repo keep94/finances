@@ -1,6 +1,7 @@
 package list
 
 import (
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/aggregators"
@@ -8,7 +9,6 @@ import (
 	"github.com/keep94/finances/fin/consumers"
 	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/http_util"
 	"html/template"
@@ -219,7 +219,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			errorMessage = "Range must be of form 12.34 to 56.78."
 		}
 	}
-	var filter goconsume.Applier
+	var filter consume.MapFilterer
 	if amtFilter != nil || filt != nil || r.Form.Get("name") != "" || r.Form.Get("desc") != "" {
 		filter = filters.CompileAdvanceSearchSpec(&filters.AdvanceSearchSpec{
 			CF:   filt,
@@ -230,18 +230,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var totaler *aggregators.Totaler
 	var entries []fin.Entry
 	var morePages bool
-	epb := goconsume.Page(pageNo, h.PageSize, &entries, &morePages)
-	var cr goconsume.Consumer = epb
+	epb := consume.Page(pageNo, h.PageSize, &entries, &morePages)
+	var cr consume.Consumer = epb
 	sdPtr, sderr := getDateRelaxed(r.Form, "sd")
 	edPtr, ederr := getDateRelaxed(r.Form, "ed")
 	if filter != nil {
 		if sdPtr != nil {
 			totaler = &aggregators.Totaler{}
-			cr = goconsume.Compose(
+			cr = consume.Compose(
 				consumers.FromCatPaymentAggregator(totaler),
 				cr)
 		}
-		cr = goconsume.MapFilter(cr, filter)
+		cr = consume.MapFilter(cr, filter)
 	}
 	var elo *findb.EntryListOptions
 	if sderr != nil || ederr != nil {

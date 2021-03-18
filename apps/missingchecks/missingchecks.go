@@ -7,12 +7,12 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/fin"
 	csqlite "github.com/keep94/finances/fin/categories/categoriesdb/for_sqlite"
 	"github.com/keep94/finances/fin/checks"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/db/sqlite_db"
@@ -56,8 +56,8 @@ func main() {
 			store,
 			accountDetail.Id(),
 			&account,
-			goconsume.MapFilter(
-				goconsume.AppendTo(&checkNos),
+			consume.MapFilter(
+				consume.AppendTo(&checkNos),
 				func(entryPtr *fin.EntryBalance, checkNoPtr *int) bool {
 					// It can't be a valid check if it is a credit
 					if entryPtr.Total() > 0 {

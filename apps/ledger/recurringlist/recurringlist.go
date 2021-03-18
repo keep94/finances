@@ -3,11 +3,11 @@ package recurringlist
 import (
 	"errors"
 	"fmt"
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories/categoriesdb"
 	"github.com/keep94/finances/fin/findb"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/http_util"
@@ -142,9 +142,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	cds, _ := h.Cdc.Get(nil)
 	var entries []*fin.RecurringEntry
-	consumer := goconsume.AppendPtrsTo(&entries)
+	consumer := consume.AppendPtrsTo(&entries)
 	if acctId > 0 {
-		consumer = goconsume.MapFilter(
+		consumer = consume.MapFilter(
 			consumer,
 			func(src, dest *fin.RecurringEntry) bool {
 				*dest = *src

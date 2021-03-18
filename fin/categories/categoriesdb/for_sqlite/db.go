@@ -2,10 +2,10 @@
 package for_sqlite
 
 import (
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	fsqlite "github.com/keep94/finances/fin/findb/for_sqlite"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db/sqlite_db"
 	"github.com/keep94/toolbox/db/sqlite_rw"
@@ -143,7 +143,7 @@ func (r *rawCatDbRow) ValuePtr() interface{} {
 	return r.CatDbRow
 }
 
-func expenseCategories(conn *sqlite.Conn, consumer goconsume.Consumer) error {
+func expenseCategories(conn *sqlite.Conn, consumer consume.Consumer) error {
 	stmt, err := conn.Prepare("select id, name, is_active, parent_id from expense_categories")
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func expenseCategories(conn *sqlite.Conn, consumer goconsume.Consumer) error {
 		consumer)
 }
 
-func incomeCategories(conn *sqlite.Conn, consumer goconsume.Consumer) error {
+func incomeCategories(conn *sqlite.Conn, consumer consume.Consumer) error {
 	stmt, err := conn.Prepare("select id, name, is_active, parent_id from income_categories")
 	if err != nil {
 		return err

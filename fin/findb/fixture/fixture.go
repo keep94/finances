@@ -5,9 +5,9 @@ package fixture
 import (
 	"errors"
 	"fmt"
+	"github.com/keep94/consume"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/findb"
-	"github.com/keep94/goconsume"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/passwords"
@@ -304,7 +304,7 @@ func (f EntryAccountFixture) EntriesByAccountIdNilPtr(
 	var entriesWithBalance []fin.EntryBalance
 	err := f.Doer.Do(func(t db.Transaction) error {
 		return findb.EntriesByAccountId(
-			t, store, 1, nil, goconsume.AppendTo(&entriesWithBalance))
+			t, store, 1, nil, consume.AppendTo(&entriesWithBalance))
 	})
 	if err != nil {
 		t.Fatalf("Got error reading database: %v", err)
@@ -335,7 +335,7 @@ func (f EntryAccountFixture) UnreconciledEntriesNoAccount(
 	var entries []fin.Entry
 	f.Doer.Do(func(t db.Transaction) error {
 		return findb.UnreconciledEntries(
-			t, store, 1, nil, goconsume.AppendTo(&entries))
+			t, store, 1, nil, consume.AppendTo(&entries))
 	})
 }
 
@@ -575,7 +575,7 @@ func (f EntryAccountFixture) ApplyRecurringEntries(
 	// Make sure fetching entries is sorted by ID in descending order
 	var addedEntries []*fin.RecurringEntry
 	if err := store.RecurringEntries(
-		nil, goconsume.AppendPtrsTo(&addedEntries)); err != nil {
+		nil, consume.AppendPtrsTo(&addedEntries)); err != nil {
 		t.Fatalf("Error fetching recurring entries: %v", err)
 	}
 	verifyRecurringEntriesSortedByDate(t, addedEntries)
@@ -708,7 +708,7 @@ func (f EntryAccountFixture) verifyUnreconciledEntries(
 	var account fin.Account
 	err := f.Doer.Do(func(t db.Transaction) error {
 		return findb.UnreconciledEntries(
-			t, store, acct_id, &account, goconsume.AppendTo(&entries))
+			t, store, acct_id, &account, consume.AppendTo(&entries))
 	})
 	if err != nil {
 		t.Errorf("Got error reading database: %v", err)
@@ -742,7 +742,7 @@ func (f EntryAccountFixture) unreconciledEntriesError(
 	var account fin.Account
 	return f.Doer.Do(func(t db.Transaction) error {
 		return findb.UnreconciledEntries(
-			t, store, acct_id, &account, goconsume.AppendTo(&entries))
+			t, store, acct_id, &account, consume.AppendTo(&entries))
 	})
 }
 
@@ -755,7 +755,7 @@ func (f EntryAccountFixture) verifyEntriesByAccountId(
 	var account fin.Account
 	err := f.Doer.Do(func(t db.Transaction) error {
 		return findb.EntriesByAccountId(
-			t, store, acct_id, &account, goconsume.AppendTo(&entries))
+			t, store, acct_id, &account, consume.AppendTo(&entries))
 	})
 	if err != nil {
 		t.Errorf("Got error reading database: %v", err)
@@ -776,7 +776,7 @@ func (f EntryAccountFixture) entriesByAccountIdError(
 	var account fin.Account
 	return f.Doer.Do(func(t db.Transaction) error {
 		return findb.EntriesByAccountId(
-			t, store, acct_id, &account, goconsume.AppendTo(&entries))
+			t, store, acct_id, &account, consume.AppendTo(&entries))
 	})
 }
 
@@ -795,7 +795,7 @@ func (f EntryAccountFixture) verifyEntryDates(
 			store,
 			accountId,
 			&account,
-			goconsume.AppendPtrsTo(&entries))
+			consume.AppendPtrsTo(&entries))
 	})
 	if err != nil {
 		t.Fatalf("Error retrieving added entries: %v", err)
@@ -858,7 +858,7 @@ func fetchEntries(
 	store findb.EntriesRunner,
 	options *findb.EntryListOptions) []fin.Entry {
 	var entries []fin.Entry
-	err := store.Entries(nil, options, goconsume.AppendTo(&entries))
+	err := store.Entries(nil, options, consume.AppendTo(&entries))
 	if err != nil {
 		t.Fatalf("Got error fetching entries: %v", err)
 	}
@@ -1158,7 +1158,7 @@ func UserByName(t *testing.T, store UserByNameStore) {
 func Users(t *testing.T, store UsersStore) {
 	createUsers(t, store)
 	var users []fin.User
-	err := store.Users(nil, goconsume.AppendTo(&users))
+	err := store.Users(nil, consume.AppendTo(&users))
 	if err != nil {
 		t.Fatalf("Got error reading database: %v", err)
 	}
