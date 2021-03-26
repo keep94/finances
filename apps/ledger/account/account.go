@@ -105,6 +105,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pageNo, _ := strconv.Atoi(r.Form.Get(kPageParam))
+	if pageNo < 0 {
+		pageNo = 0
+	}
 	cds := categories.CatDetailStore{}
 	var entryBalances []fin.EntryBalance
 	var morePages bool

@@ -204,6 +204,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pageNo, _ := strconv.Atoi(r.Form.Get(kPageParam))
+	if pageNo < 0 {
+		pageNo = 0
+	}
 	cds, _ := h.Cdc.Get(nil)
 	var filt fin.CatFilter
 	cat, caterr := fin.CatFromString(r.Form.Get("cat"))
