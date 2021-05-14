@@ -52,6 +52,50 @@ func TestCompileAdvanceSearchSpec(t *testing.T) {
 	}
 }
 
+func TestAccountFiltering(t *testing.T) {
+	assert := assert.New(t)
+	var builder fin.CatPaymentBuilder
+	builder.AddCatRec(fin.CatRec{Cat: fin.NewCat("0:302"), Amount: 4700})
+	builder.AddCatRec(fin.CatRec{Cat: fin.NewCat("2:3"), Amount: 3400})
+	builder.SetPaymentId(5)
+	entry := fin.Entry{CatPayment: builder.Build()}
+
+	filterer := CompileAdvanceSearchSpec(&AdvanceSearchSpec{AccountId: 0})
+	result := filterer.MapFilter(&entry).(*fin.Entry)
+	assert.Equal(int64(-8100), result.Total())
+
+	filterer = CompileAdvanceSearchSpec(&AdvanceSearchSpec{AccountId: 5})
+	result = filterer.MapFilter(&entry).(*fin.Entry)
+	assert.Equal(int64(-8100), result.Total())
+
+	filterer = CompileAdvanceSearchSpec(&AdvanceSearchSpec{AccountId: 3})
+	result = filterer.MapFilter(&entry).(*fin.Entry)
+	assert.Equal(int64(3400), result.Total())
+
+	filterer = CompileAdvanceSearchSpec(&AdvanceSearchSpec{AccountId: 2})
+	assert.Nil(filterer.MapFilter(&entry))
+
+	filterer = CompileAdvanceSearchSpec(&AdvanceSearchSpec{AccountId: -4})
+	assert.Nil(filterer.MapFilter(&entry))
+
+	catIs302 := func(c fin.Cat) bool { return c == fin.NewCat("0:302") }
+	amountIsNeg4700 := func(amt int64) bool { return amt == -4700 }
+	amountIsNeg8100 := func(amt int64) bool { return amt == -8100 }
+
+	filterer = CompileAdvanceSearchSpec(
+		&AdvanceSearchSpec{AccountId: 5, CF: catIs302, AF: amountIsNeg4700})
+	result = filterer.MapFilter(&entry).(*fin.Entry)
+	assert.Equal(int64(-4700), result.Total())
+
+	filterer = CompileAdvanceSearchSpec(
+		&AdvanceSearchSpec{AccountId: 5, CF: catIs302, AF: amountIsNeg8100})
+	assert.Nil(filterer.MapFilter(&entry))
+
+	filterer = CompileAdvanceSearchSpec(
+		&AdvanceSearchSpec{AccountId: 3, CF: catIs302})
+	assert.Nil(filterer.MapFilter(&entry))
+}
+
 func runFilter(f consume.MapFilterer) int {
 	result := 0
 	if f.MapFilter(&fin.Entry{Name: "Name 1", Desc: "Desc 1"}) != nil {
@@ -73,5 +117,5 @@ func runFilter(f consume.MapFilterer) int {
 }
 
 func makeTotal(total int64) fin.CatPayment {
-	return fin.NewCatPayment(fin.NewCat("0:7"), -total, false, 0)
+	return fin.NewCatPayment(fin.NewCat("0:7"), -total, false, 17)
 }

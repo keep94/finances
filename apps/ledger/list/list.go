@@ -94,6 +94,18 @@ body {
         <br>
         Top level only: <input type="checkbox" name="top" {{if .Get "top"}}checked{{end}}>
       </td>
+      <td valign="top">Account: </td>
+      <td valign="top">
+        <select name="acctId" size=1>
+{{with .GetSelection .AccountSelectModel "acctId"}}
+          <option value="{{.Value}}">{{.Name}}</option>
+{{end}}
+          <option value="">ALL</option>
+{{range .ActiveAccountDetails}}
+          <option value="{{.Id}}">{{.Name}}</option>
+{{end}}
+        </select>
+      </td>
     </tr>
     <tr>
       <td>Start Date (yyyyMMdd): </td>
@@ -213,6 +225,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if caterr == nil {
 		filt = cds.Filter(cat, r.Form.Get("top") == "")
 	}
+	accountId, _ := strconv.ParseInt(r.Form.Get("acctId"), 10, 64)
 	var amtFilter filters.AmountFilter
 	errorMessage := ""
 	rangeStr := r.Form.Get("range")
@@ -223,12 +236,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var filter consume.MapFilterer
-	if amtFilter != nil || filt != nil || r.Form.Get("name") != "" || r.Form.Get("desc") != "" {
+	if amtFilter != nil || filt != nil || accountId != 0 || r.Form.Get("name") != "" || r.Form.Get("desc") != "" {
 		filter = filters.CompileAdvanceSearchSpec(&filters.AdvanceSearchSpec{
-			CF:   filt,
-			AF:   amtFilter,
-			Name: r.Form.Get("name"),
-			Desc: r.Form.Get("desc")})
+			CF:        filt,
+			AF:        amtFilter,
+			AccountId: accountId,
+			Name:      r.Form.Get("name"),
+			Desc:      r.Form.Get("desc")})
 	}
 	var totaler *aggregators.Totaler
 	var entries []fin.Entry

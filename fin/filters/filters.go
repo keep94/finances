@@ -31,6 +31,8 @@ type AmountFilter func(amt int64) bool
 type AdvanceSearchSpec struct {
 	Name string
 	Desc string
+	// If non-zero, include only entries for given account.
+	AccountId int64
 	// If present, include only entries with line items that match CF.
 	CF fin.CatFilter
 	// If present, include only entries whose total matches AF.
@@ -40,6 +42,9 @@ type AdvanceSearchSpec struct {
 // CompileAdvanceSearchSpec compiles a search specification.
 func CompileAdvanceSearchSpec(spec *AdvanceSearchSpec) consume.MapFilterer {
 	var filters []interface{}
+	if spec.AccountId != 0 {
+		filters = append(filters, byAccountFilterer(spec.AccountId))
+	}
 	if spec.CF != nil {
 		filters = append(filters, byCatFilterer(spec.CF))
 	}
@@ -53,6 +58,13 @@ func CompileAdvanceSearchSpec(spec *AdvanceSearchSpec) consume.MapFilterer {
 		filters = append(filters, byDescFilterer(str_util.Normalize(spec.Desc)))
 	}
 	return consume.NewMapFilterer(filters...)
+}
+
+func byAccountFilterer(accountId int64) func(src, dest *fin.Entry) bool {
+	return func(src, dest *fin.Entry) bool {
+		*dest = *src
+		return dest.WithPayment(accountId)
+	}
 }
 
 func byCatFilterer(f fin.CatFilter) func(src, dest *fin.Entry) bool {
