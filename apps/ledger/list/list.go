@@ -1,22 +1,24 @@
 package list
 
 import (
-	"github.com/keep94/consume"
-	"github.com/keep94/finances/apps/ledger/common"
-	"github.com/keep94/finances/fin"
-	"github.com/keep94/finances/fin/aggregators"
-	"github.com/keep94/finances/fin/categories/categoriesdb"
-	"github.com/keep94/finances/fin/consumers"
-	"github.com/keep94/finances/fin/filters"
-	"github.com/keep94/finances/fin/findb"
-	"github.com/keep94/toolbox/date_util"
-	"github.com/keep94/toolbox/http_util"
 	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/keep94/consume"
+	"github.com/keep94/finances/apps/ledger/common"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/aggregators"
+	"github.com/keep94/finances/fin/categories"
+	"github.com/keep94/finances/fin/categories/categoriesdb"
+	"github.com/keep94/finances/fin/consumers"
+	"github.com/keep94/finances/fin/filters"
+	"github.com/keep94/finances/fin/findb"
+	"github.com/keep94/toolbox/date_util"
+	"github.com/keep94/toolbox/http_util"
 )
 
 const (
@@ -74,8 +76,8 @@ body {
 <body class="yui-skin-sam">
 {{.LeftNav}}
 <div class="main">
-{{if .ErrorMessage}}
-  <span class="error">{{.ErrorMessage}}</span>
+{{with .ErrorMessage}}
+  <span class="error">{{.}}</span>
 {{end}}
 <form>
   <table>
@@ -220,53 +222,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		pageNo = 0
 	}
 	cds, _ := h.Cdc.Get(nil)
-	var filt fin.CatFilter
-	cat, caterr := fin.CatFromString(r.Form.Get("cat"))
-	if caterr == nil {
-		filt = cds.Filter(cat, r.Form.Get("top") == "")
-	}
-	accountId, _ := strconv.ParseInt(r.Form.Get("acctId"), 10, 64)
-	var amtFilter filters.AmountFilter
-	errorMessage := ""
-	rangeStr := r.Form.Get("range")
-	if rangeStr != "" {
-		amtFilter = compileRangeFilter(rangeStr)
-		if amtFilter == nil {
-			errorMessage = "Range must be of form 12.34 to 56.78."
-		}
-	}
-	var filter consume.MapFilterer
-	if amtFilter != nil || filt != nil || accountId != 0 || r.Form.Get("name") != "" || r.Form.Get("desc") != "" {
-		filter = filters.CompileAdvanceSearchSpec(&filters.AdvanceSearchSpec{
-			CF:        filt,
-			AF:        amtFilter,
-			AccountId: accountId,
-			Name:      r.Form.Get("name"),
-			Desc:      r.Form.Get("desc")})
-	}
+	var creater creater
+	filter := creater.CreateFilterer(r.Form, cds)
+	elo := creater.CreateEntryListOptions(r.Form)
+
 	var totaler *aggregators.Totaler
 	var entries []fin.Entry
 	var morePages bool
 	epb := consume.Page(pageNo, h.PageSize, &entries, &morePages)
-	var cr consume.Consumer = epb
-	sdPtr, sderr := getDateRelaxed(r.Form, "sd")
-	edPtr, ederr := getDateRelaxed(r.Form, "ed")
-	if filter != nil {
-		if sdPtr != nil {
-			totaler = &aggregators.Totaler{}
-			cr = consume.Compose(
-				consumers.FromCatPaymentAggregator(totaler),
-				cr)
-		}
-		cr = consume.MapFilter(cr, filter)
+	if filter != nil && elo.Start != nil {
+		totaler = &aggregators.Totaler{}
 	}
-	var elo *findb.EntryListOptions
-	if sderr != nil || ederr != nil {
-		errorMessage = "Start and end date must be in yyyyMMdd format."
-	} else {
-		elo = &findb.EntryListOptions{Start: sdPtr, End: edPtr}
-	}
-	err := h.Store.Entries(nil, elo, cr)
+	err := h.Store.Entries(nil, elo, buildConsumer(epb, filter, totaler))
 	epb.Finalize()
 	if err != nil {
 		http_util.ReportError(w, "Error reading database.", err)
@@ -291,9 +258,77 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			common.CatDisplayer{cds},
 			common.CatLinker{ListEntries: listEntriesUrl, Cds: cds},
 			common.EntryLinker{URL: r.URL, Sel: selecter},
-			errorMessage,
+			creater.ErrorMessage,
 			leftnav,
 			h.Global})
+}
+
+func buildConsumer(
+	consumer consume.Consumer,
+	filter consume.MapFilterer,
+	totaler *aggregators.Totaler) consume.Consumer {
+	if totaler != nil {
+		consumer = consume.Compose(
+			consumers.FromCatPaymentAggregator(totaler),
+			consumer)
+	}
+	if filter != nil {
+		consumer = consume.MapFilter(consumer, filter)
+	}
+	return consumer
+}
+
+type creater struct {
+	ErrorMessage string
+}
+
+func (c *creater) CreateEntryListOptions(
+	values url.Values) *findb.EntryListOptions {
+	sdPtr, sderr := getDateRelaxed(values, "sd")
+	edPtr, ederr := getDateRelaxed(values, "ed")
+	if sderr != nil || ederr != nil {
+		c.ErrorMessage = "Start and end date must be in yyyyMMdd format."
+		return &findb.EntryListOptions{}
+	}
+	return &findb.EntryListOptions{Start: sdPtr, End: edPtr}
+}
+
+func (c *creater) CreateFilterer(
+	values url.Values, cds categories.CatDetailStore) consume.MapFilterer {
+	filt := createCatFilter(values, cds)
+	accountId, _ := strconv.ParseInt(values.Get("acctId"), 10, 64)
+	amtFilter := c.createAmountFilter(values.Get("range"))
+	name := values.Get("name")
+	desc := values.Get("desc")
+	if amtFilter != nil || filt != nil || accountId != 0 || name != "" || desc != "" {
+		return filters.CompileAdvanceSearchSpec(&filters.AdvanceSearchSpec{
+			CF:        filt,
+			AF:        amtFilter,
+			AccountId: accountId,
+			Name:      name,
+			Desc:      desc})
+	}
+	return nil
+}
+
+func (c *creater) createAmountFilter(rangeStr string) filters.AmountFilter {
+	if rangeStr == "" {
+		return nil
+	}
+	filter := compileRangeFilter(rangeStr)
+	if filter == nil {
+		c.ErrorMessage = "Range must be of form 12.34 to 56.78."
+	}
+	return filter
+}
+
+func createCatFilter(
+	values url.Values, cds categories.CatDetailStore) fin.CatFilter {
+	cat, caterr := fin.CatFromString(values.Get("cat"))
+	if caterr != nil {
+		return nil
+	}
+	return cds.Filter(cat, values.Get("top") == "")
 }
 
 type view struct {
