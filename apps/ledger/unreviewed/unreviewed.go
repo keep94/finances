@@ -218,8 +218,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w,
 		kTemplate,
 		&view{
-			http_util.Values{r.Form},
-			common.CatDisplayer{cds},
+			http_util.Values{Values: r.Form},
+			common.CatDisplayer{CatDetailStore: cds},
 			entries,
 			common.NewXsrfToken(r, kUnreviewed),
 			message,

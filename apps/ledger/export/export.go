@@ -183,8 +183,8 @@ func (h *Handler) toViewFromForm(
 	leftnav template.HTML,
 	err error) *view {
 	return &view{
-		http_util.Values{values},
-		common.CatDisplayer{cds},
+		http_util.Values{Values: values},
+		common.CatDisplayer{CatDetailStore: cds},
 		leftnav,
 		h.Global,
 		err}

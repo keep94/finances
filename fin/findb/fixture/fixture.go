@@ -95,8 +95,8 @@ func (f EntryAccountFixture) AccountUpdates(t *testing.T, store AccountByIdStore
 	cpb := fin.CatPaymentBuilder{}
 	entry1 := fin.Entry{
 		CatPayment: cpb.AddCatRec(
-			fin.CatRec{fin.NewCat("0:7"), 6000, false}).AddCatRec(
-			fin.CatRec{fin.NewCat("2:2"), 2000, false}).SetPaymentId(
+			fin.CatRec{Cat: fin.NewCat("0:7"), Amount: 6000}).AddCatRec(
+			fin.CatRec{Cat: fin.NewCat("2:2"), Amount: 2000}).SetPaymentId(
 			1).SetReconciled(true).Build()}
 	entry2 := fin.Entry{
 		CatPayment: fin.NewCatPayment(fin.NewCat("0:7"), 3000, false, 1)}

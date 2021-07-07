@@ -880,5 +880,4 @@ func topLevelName(t fin.CatType) string {
 	default:
 		panic("No such CatType.")
 	}
-	return "expense"
 }

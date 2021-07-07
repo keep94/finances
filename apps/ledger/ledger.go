@@ -307,16 +307,16 @@ func setupDb(filepath string) {
 	kDoer = sqlite_db.NewDoer(dbase)
 	kCatDetailCache = csqlite.New(dbase)
 	kStore = for_sqlite.New(dbase)
-	qfxLoader := qfx.QFXLoader{qfxdata}
-	csvLoader := csv.CsvLoader{qfxdata}
+	qfxLoader := qfx.QFXLoader{Store: qfxdata}
+	csvLoader := csv.CsvLoader{Store: qfxdata}
 	kUploaders = map[string]autoimport.Loader{
 		".qfx": qfxLoader,
 		".ofx": qfxLoader,
 		".csv": csvLoader}
 	kReadOnlyCatDetailCache = csqlite.ReadOnlyWrapper(kCatDetailCache)
 	kReadOnlyStore = for_sqlite.ReadOnlyWrapper(kStore)
-	readOnlyQFXLoader := qfx.QFXLoader{qfxdb.ReadOnlyWrapper(qfxdata)}
-	readOnlyCsvLoader := csv.CsvLoader{qfxdb.ReadOnlyWrapper(qfxdata)}
+	readOnlyQFXLoader := qfx.QFXLoader{Store: qfxdb.ReadOnlyWrapper(qfxdata)}
+	readOnlyCsvLoader := csv.CsvLoader{Store: qfxdb.ReadOnlyWrapper(qfxdata)}
 	kReadOnlyUploaders = map[string]autoimport.Loader{
 		".qfx": readOnlyQFXLoader,
 		".ofx": readOnlyQFXLoader,

@@ -97,7 +97,7 @@ func ToSingleEntryView(
 	global *Global,
 	leftnav template.HTML) *SingleEntryView {
 	result := &SingleEntryView{
-		Values:        http_util.Values{make(url.Values)},
+		Values:        http_util.Values{Values: make(url.Values)},
 		CatDisplayer:  CatDisplayer{cds},
 		Splits:        entrySplits,
 		Error:         nil,
@@ -153,7 +153,7 @@ func ToSingleEntryViewFromForm(
 	leftnav template.HTML,
 	err error) *SingleEntryView {
 	return &SingleEntryView{
-		Values:        http_util.Values{values},
+		Values:        http_util.Values{Values: values},
 		CatDisplayer:  CatDisplayer{cds},
 		Splits:        entrySplits,
 		Error:         err,

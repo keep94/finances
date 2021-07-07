@@ -158,7 +158,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		kTemplate,
 		&view{
 			entries,
-			common.CatDisplayer{cds},
+			common.CatDisplayer{CatDetailStore: cds},
 			common.NewXsrfToken(r, kUnreconciled),
 			&account,
 			leftnav,

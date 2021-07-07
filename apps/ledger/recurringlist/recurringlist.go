@@ -172,7 +172,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w,
 		kTemplate,
 		&view{
-			CatDisplayer: common.CatDisplayer{cds},
+			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 			RecurringEntryLinker: common.RecurringEntryLinker{
 				URL: r.URL,
 				Sel: selecter},

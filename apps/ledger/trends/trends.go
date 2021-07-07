@@ -199,8 +199,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start, end, err := getDateRange(r)
 	if err != nil {
 		v := &view{
-			Values:       http_util.Values{r.Form},
-			CatDisplayer: common.CatDisplayer{cds},
+			Values:       http_util.Values{Values: r.Form},
+			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 			Error:        errors.New("Dates must be in yyyyMMdd format."),
 			CatDetails:   cds.DetailsByIds(fin.CatSet{fin.Expense: true, fin.Income: true}),
 			LeftNav:      leftnav,
@@ -216,8 +216,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		v := &view{
-			Values:       http_util.Values{r.Form},
-			CatDisplayer: common.CatDisplayer{cds},
+			Values:       http_util.Values{Values: r.Form},
+			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 			Items:        points,
 			CatDetails:   cds.DetailsByIds(cats),
 			GraphUrl:     graphUrl,
@@ -233,8 +233,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		v := &view{
-			Values:       http_util.Values{r.Form},
-			CatDisplayer: common.CatDisplayer{cds},
+			Values:       http_util.Values{Values: r.Form},
+			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 			MultiItems:   points,
 			CatDetails:   cds.DetailsByIds(cats),
 			GraphUrl:     graphUrl,

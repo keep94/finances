@@ -157,8 +157,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start, end, err := getDateRange(r)
 	if err != nil {
 		v := &view{
-			Values:       http_util.Values{r.Form},
-			CatDisplayer: common.CatDisplayer{cds},
+			Values:       http_util.Values{Values: r.Form},
+			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 			CatDetails:   cds.DetailsByIds(fin.CatSet{fin.Expense: true, fin.Income: true}),
 			Error:        errors.New("Dates must be in yyyyMMdd format."),
 			LeftNav:      leftnav,
@@ -197,8 +197,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		catsInDropDown.AddSet(children[fin.Expense]).AddSet(children[fin.Income])
 	}
 	v := &view{
-		Values:       http_util.Values{r.Form},
-		CatDisplayer: common.CatDisplayer{cds},
+		Values:       http_util.Values{Values: r.Form},
+		CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 		Sets:         displaySets,
 		CatDetails:   cds.DetailsByIds(catsInDropDown),
 		LeftNav:      leftnav,

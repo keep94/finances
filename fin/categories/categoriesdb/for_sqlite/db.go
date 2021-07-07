@@ -109,7 +109,6 @@ func (u catDetailStoreUpdater) Update(t fin.CatType, row *categories.CatDbRow) e
 	} else {
 		panic("t must be either ExpenseCat or IncomeCat")
 	}
-	return nil
 }
 
 func (u catDetailStoreUpdater) Remove(t fin.CatType, id int64) error {

@@ -124,7 +124,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w,
 			kTemplate,
 			&view{
-				CatDisplayer: common.CatDisplayer{cds},
+				CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 				Xsrf:         common.NewXsrfToken(r, kCatEdit),
 				LeftNav:      leftnav,
 				Global:       h.Global})
@@ -173,7 +173,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		values := http_util.Values{}
 		if err != nil {
-			values = http_util.Values{r.Form}
+			values = http_util.Values{Values: r.Form}
 			message = ""
 		}
 		leftnav := h.LN.Generate(w, r, common.SelectManage())
@@ -181,7 +181,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		http_util.WriteTemplate(w, kTemplate, &view{
-			CatDisplayer: common.CatDisplayer{cds},
+			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 			Values:       values,
 			Error:        err,
 			Message:      message,
