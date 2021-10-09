@@ -138,6 +138,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) sendLockoutEmail(userName string) {
+	if h.Mailer == nil {
+		return
+	}
 	subject := fmt.Sprintf("Account %s locked", userName)
 	body := fmt.Sprintf(
 		"Account %s locked from too many failed login attempts", userName)

@@ -80,9 +80,9 @@ var (
 )
 
 var (
-	kGmailConfig *gmailConfigType
-	kMailer      *mailer.Mailer
-	kLockout     *lockout.Lockout
+	kLockout           *lockout.Lockout
+	kMailer            login.Sender
+	kLockoutRecipients []string
 )
 
 func main() {
@@ -110,28 +110,17 @@ func main() {
 		}
 	}
 	global := &common.Global{Title: fTitle, Icon: hasIcon}
-	if fGmailConfig != "" {
-		http.Handle(
-			"/auth/login",
-			&login.Handler{
-				Doer:               kDoer,
-				SessionStore:       kSessionStore,
-				Store:              kStore,
-				LO:                 kLockout,
-				Mailer:             kMailer,
-				Recipients:         kGmailConfig.To,
-				PopularityLookback: fPopularityLookback,
-				Global:             global})
-	} else {
-		http.Handle(
-			"/auth/login",
-			&login.Handler{
-				Doer:               kDoer,
-				SessionStore:       kSessionStore,
-				Store:              kStore,
-				PopularityLookback: fPopularityLookback,
-				Global:             global})
-	}
+	http.Handle(
+		"/auth/login",
+		&login.Handler{
+			Doer:               kDoer,
+			SessionStore:       kSessionStore,
+			Store:              kStore,
+			LO:                 kLockout,
+			Mailer:             kMailer,
+			Recipients:         kLockoutRecipients,
+			PopularityLookback: fPopularityLookback,
+			Global:             global})
 	ln := &common.LeftNav{Cdc: kReadOnlyCatDetailCache, Clock: kClock}
 	http.Handle(
 		"/fin/", &authHandler{mux})
@@ -361,19 +350,28 @@ func readGmailConfig(fileName string) (*gmailConfigType, error) {
 	if err := yaml.Unmarshal(content.Bytes(), &result); err != nil {
 		return nil, err
 	}
-	if result.Email == "" || result.Password == "" || len(result.To) == 0 || result.Failures < 1 {
+	if result.Failures <= 0 {
+		return nil, errors.New("failures field must be positive")
+	}
+	if result.Email == "" && result.Password == "" && len(result.To) == 0 {
+		// lockout without email notification
+		return &result, nil
+	}
+	if result.Email == "" || result.Password == "" || len(result.To) == 0 {
 		return nil, errors.New(
-			"email, password, to, and failures fields required")
+			"email, password, and to fields required")
 	}
 	return &result, nil
 }
 
 func setupGmail(configPath string) {
-	var err error
-	kGmailConfig, err = readGmailConfig(configPath)
+	gmailConfig, err := readGmailConfig(configPath)
 	if err != nil {
 		log.Fatalf("Error reading config file: %v", err)
 	}
-	kMailer = mailer.New(kGmailConfig.Email, kGmailConfig.Password)
-	kLockout = lockout.New(kGmailConfig.Failures)
+	kLockout = lockout.New(gmailConfig.Failures)
+	if gmailConfig.Email != "" {
+		kMailer = mailer.New(gmailConfig.Email, gmailConfig.Password)
+		kLockoutRecipients = gmailConfig.To
+	}
 }
