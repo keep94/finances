@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/consumers"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/http_util"
@@ -121,7 +122,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		if h.PopularityLookback > 0 {
 			var catPopularity fin.CatPopularity
-			consumer := fin.BuildCatPopularity(
+			consumer := consumers.BuildCatPopularity(
 				h.PopularityLookback, &catPopularity)
 			h.Store.Entries(nil, nil, consumer)
 			consumer.Finalize()

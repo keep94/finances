@@ -1,4 +1,4 @@
-// Package streams contains useful consumers of basic types
+// Package consumers contains useful consumers of basic types
 package consumers
 
 import (

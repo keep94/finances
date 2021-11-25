@@ -103,6 +103,11 @@ func (c CatSet) AddSet(rhs CatSet) CatSet {
 	return c
 }
 
+// CatPopularity values are immutable by contract. The key is the category;
+// the value is greater than or equal to zero and indicates popularity of
+// the category.
+type CatPopularity map[Cat]int
+
 // CatRec specifies a category, amount, and reconciled flag.
 type CatRec struct {
 	// Cat is the category.
