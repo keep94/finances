@@ -103,6 +103,10 @@ func entries(conn *sqlite.Conn, options *findb.EntryListOptions, consumer consum
 			return err
 		}
 	}
+	if options != nil && options.Unreviewed {
+		return sqlite_rw.ReadRowsWithEtag(
+			(&rawEntry{}).init(&fin.Entry{}), stmt, consumer)
+	}
 	return sqlite_rw.ReadRows((&rawEntry{}).init(&fin.Entry{}), stmt, consumer)
 }
 

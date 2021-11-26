@@ -271,6 +271,12 @@ func (f EntryAccountFixture) ListEntriesJustEndDate(
 	if output := len(fetched_entries); output != 1 {
 		t.Errorf("Expected to fetch 1 entries, but fetched %v", output)
 	}
+	for i := range fetched_entries {
+		if fetched_entries[i].Etag != 0 {
+			t.Error("Did not expect to fetch etags")
+			break
+		}
+	}
 }
 
 func (f EntryAccountFixture) ListEntriesUnreviewed(
@@ -283,6 +289,12 @@ func (f EntryAccountFixture) ListEntriesUnreviewed(
 	verifyEntriesSorted(t, fetched_entries)
 	if output := len(fetched_entries); output != 3 {
 		t.Errorf("Expected to fetch 3 entries, but fetched %v", output)
+	}
+	for i := range fetched_entries {
+		if fetched_entries[i].Etag == 0 {
+			t.Error("Expected to fetch non-zero etags")
+			break
+		}
 	}
 }
 

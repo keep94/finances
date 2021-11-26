@@ -67,7 +67,9 @@ type DoEntryChangesRunner interface {
 type EntriesRunner interface {
 	// Entries gets entries from most to least recent.
 	// options is additional options for getting entries, may be nil;
-	// consumer consumes the fin.Entry values.
+	// consumer consumes the fin.Entry values. If
+	// options.Unreviewed == true, then Entries computes the etag for
+	// each fetched entry.
 	Entries(t db.Transaction, options *EntryListOptions,
 		consumer consume.Consumer) error
 }
