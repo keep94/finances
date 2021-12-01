@@ -7,6 +7,7 @@ import (
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories/categoriesdb"
+	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db"
@@ -146,10 +147,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if acctId > 0 {
 		consumer = consume.MapFilter(
 			consumer,
-			func(src, dest *fin.RecurringEntry) bool {
-				*dest = *src
-				return dest.WithPayment(acctId)
-			})
+			filters.RecurringEntryMapper(
+				func(src, dest *fin.RecurringEntry) bool {
+					*dest = *src
+					return dest.WithPayment(acctId)
+				}))
 	}
 	err := store.RecurringEntries(nil, consumer)
 	if err != nil {

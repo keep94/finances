@@ -10,6 +10,7 @@ import (
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	"github.com/keep94/finances/fin/categories/categoriesdb"
+	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/http_util"
@@ -149,10 +150,10 @@ func (h *Handler) doPost(
 	consumer = consume.Slice(consumer, 0, kMaxLines+1)
 	consumer = consume.MapFilter(
 		consumer,
-		func(src, dest *fin.Entry) bool {
+		filters.EntryMapper(func(src, dest *fin.Entry) bool {
 			*dest = *src
 			return dest.WithPayment(acctId)
-		})
+		}))
 	err = h.Store.Entries(nil, elo, consumer)
 	if err == nil && !consumer.CanConsume() {
 		err = errors.New("File too big. Try a smaller date range")

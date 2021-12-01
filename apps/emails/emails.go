@@ -149,10 +149,10 @@ type view struct {
 	YTDNet       string
 }
 
-func newDateFilter(start, end time.Time) func(*fin.Entry) bool {
-	return func(p *fin.Entry) bool {
+func newDateFilter(start, end time.Time) consume.Filterer {
+	return filters.EntryFilterer(func(p *fin.Entry) bool {
 		return !p.Date.Before(start) && p.Date.Before(end)
-	}
+	})
 }
 
 func newConsumer(

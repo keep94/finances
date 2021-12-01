@@ -102,10 +102,10 @@ func UnreconciledEntries(
 	consumer = consume.Slice(consumer, 0, account.Count-account.RCount)
 	consumer = consume.MapFilter(
 		consumer,
-		func(src, dest *fin.Entry) bool {
+		filters.EntryMapper(func(src, dest *fin.Entry) bool {
 			*dest = *src
 			return dest.WithPayment(acctId) && !dest.Reconciled()
-		})
+		}))
 	return store.Entries(t, nil, consumer)
 }
 
@@ -131,10 +131,10 @@ func EntriesByAccountId(
 	consumer = consume.Slice(consumer, 0, account.Count)
 	consumer = consume.MapFilter(
 		consumer,
-		func(src, dest *fin.Entry) bool {
+		filters.EntryMapper(func(src, dest *fin.Entry) bool {
 			*dest = *src
 			return dest.WithPayment(acctId)
-		},
+		}),
 		filters.WithBalance(account.Balance))
 	return store.Entries(t, nil, consumer)
 }
@@ -501,8 +501,7 @@ func applyRecurringEntriesDryRun(
 	err error) {
 	consumer := consume.AppendPtrsTo(&recurringEntriesToUpdate)
 	if acctId != 0 {
-		consumer = consume.MapFilter(
-			consumer, accountFilter(acctId))
+		consumer = consume.MapFilter(consumer, accountFilter(acctId))
 	}
 	if err = store.RecurringEntries(t, consumer); err != nil {
 		return
@@ -518,9 +517,9 @@ func applyRecurringEntriesDryRun(
 	return
 }
 
-func accountFilter(acctId int64) func(*fin.RecurringEntry) bool {
-	return func(ptr *fin.RecurringEntry) bool {
+func accountFilter(acctId int64) consume.Filterer {
+	return filters.RecurringEntryFilterer(func(ptr *fin.RecurringEntry) bool {
 		cp := ptr.CatPayment
 		return cp.WithPayment(acctId)
-	}
+	})
 }

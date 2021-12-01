@@ -134,13 +134,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	cds := categories.CatDetailStore{}
 	entries := make([]fin.Entry, 0, h.PageSize)
-	consumer := consume.AppendTo(&entries)
-	consumer = consume.Slice(consumer, 0, h.PageSize)
+	cf := consume.AppendToSaveMemory(&entries)
+	consumer := consume.Slice(cf, 0, h.PageSize)
 	account := fin.Account{}
 	err := h.Doer.Do(func(t db.Transaction) (err error) {
 		cds, _ = cache.Get(t)
 		return findb.UnreconciledEntries(t, store, acctId, &account, consumer)
 	})
+	cf.Finalize()
 	if err == findb.NoSuchId {
 		fmt.Fprintln(w, "No such account.")
 		return

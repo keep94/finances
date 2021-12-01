@@ -1,4 +1,4 @@
-// Package consumers contains useful consumers of basic types
+// Package consumers contains useful consumers
 package consumers
 
 import (

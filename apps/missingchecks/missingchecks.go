@@ -11,6 +11,7 @@ import (
 	"github.com/keep94/finances/fin"
 	csqlite "github.com/keep94/finances/fin/categories/categoriesdb/for_sqlite"
 	"github.com/keep94/finances/fin/checks"
+	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
 	"github.com/keep94/gosqlite/sqlite"
@@ -50,6 +51,7 @@ func main() {
 	}
 	var account fin.Account
 	var checkNos []int
+	cf := consume.AppendToSaveMemory(&checkNos)
 	err = doer.Do(func(t db.Transaction) error {
 		return findb.EntriesByAccountId(
 			t,
@@ -57,20 +59,22 @@ func main() {
 			accountDetail.Id(),
 			&account,
 			consume.MapFilter(
-				consume.AppendTo(&checkNos),
-				func(entryPtr *fin.EntryBalance, checkNoPtr *int) bool {
-					// It can't be a valid check if it is a credit
-					if entryPtr.Total() > 0 {
-						return false
-					}
-					checkNo, err := strconv.Atoi(entryPtr.CheckNo)
-					if err != nil {
-						return false
-					}
-					*checkNoPtr = checkNo
-					return true
-				}))
+				cf,
+				filters.EntryBalanceIntMapper(
+					func(entryPtr *fin.EntryBalance, checkNoPtr *int) bool {
+						// It can't be a valid check if it is a credit
+						if entryPtr.Total() > 0 {
+							return false
+						}
+						checkNo, err := strconv.Atoi(entryPtr.CheckNo)
+						if err != nil {
+							return false
+						}
+						*checkNoPtr = checkNo
+						return true
+					})))
 	})
+	cf.Finalize()
 	if err != nil {
 		log.Fatal(err)
 	}

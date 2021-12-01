@@ -199,13 +199,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	entries := make([]fin.Entry, 0, h.PageSize)
-	consumer := consume.AppendTo(&entries)
-	consumer = consume.Slice(consumer, 0, h.PageSize)
+	cf := consume.AppendToSaveMemory(&entries)
+	consumer := consume.Slice(cf, 0, h.PageSize)
 	cds := categories.CatDetailStore{}
 	err := h.Doer.Do(func(t db.Transaction) error {
 		cds, _ = cache.Get(t)
 		return store.Entries(t, &findb.EntryListOptions{Unreviewed: true}, consumer)
 	})
+	cf.Finalize()
 	if err != nil {
 		http_util.ReportError(w, "Error reading database.", err)
 		return

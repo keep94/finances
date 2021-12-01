@@ -3,6 +3,7 @@ package consumers
 import (
 	"github.com/keep94/consume"
 	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/filters"
 )
 
 // BuildCatPopularity returns a consumer that consumes Entry values to
@@ -16,7 +17,8 @@ func BuildCatPopularity(
 	catPopularity *fin.CatPopularity) consume.ConsumeFinalizer {
 	popularities := make(catPopularityMap)
 	consumer := consume.Slice(popularities, 0, maxEntriesToRead)
-	consumer = consume.MapFilter(consumer, nonTrivialCategories)
+	consumer = consume.MapFilter(
+		consumer, filters.EntryFilterer(nonTrivialCategories))
 	return &catPopularityConsumer{
 		Consumer: consumer, popularities: popularities, result: catPopularity}
 }

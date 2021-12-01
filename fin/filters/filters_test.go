@@ -11,14 +11,20 @@ import (
 func TestWithBalance(t *testing.T) {
 	assert := assert.New(t)
 	withBalance := WithBalance(347)
+	var left, right []fin.EntryBalance
+	consumer := consume.Compose(
+		consume.MapFilter(consume.AppendTo(&left), withBalance),
+		consume.MapFilter(consume.AppendTo(&right), withBalance),
+	)
 	var entry fin.Entry
-	var entryBalance fin.EntryBalance
 	entry = fin.Entry{CatPayment: makeTotal(-400)}
-	assert.True(withBalance(&entry, &entryBalance))
-	assert.Equal(int64(347), entryBalance.Balance)
+	consumer.Consume(&entry)
 	entry = fin.Entry{CatPayment: makeTotal(-700)}
-	assert.True(withBalance(&entry, &entryBalance))
-	assert.Equal(int64(747), entryBalance.Balance)
+	consumer.Consume(&entry)
+	assert.Equal(int64(347), left[0].Balance)
+	assert.Equal(int64(347), right[0].Balance)
+	assert.Equal(int64(747), left[1].Balance)
+	assert.Equal(int64(747), right[1].Balance)
 }
 
 func TestCompileAdvanceSearchSpec(t *testing.T) {
