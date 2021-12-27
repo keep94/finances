@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
@@ -229,7 +229,7 @@ func getPermission(perm string) (fin.Permission, bool) {
 
 func listUsers(store findb.UsersRunner) bool {
 	var users []*fin.User
-	err := store.Users(nil, consume.AppendPtrsTo(&users))
+	err := store.Users(nil, consume2.AppendPtrsTo(&users))
 	if err != nil {
 		fmt.Printf("An error happened listing users - %v\n", err)
 		return false

@@ -3,28 +3,19 @@ package filters
 import (
 	"testing"
 
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWithBalance(t *testing.T) {
 	assert := assert.New(t)
-	withBalance := WithBalance(347)
-	var left, right []fin.EntryBalance
-	consumer := consume.Compose(
-		consume.MapFilter(consume.AppendTo(&left), withBalance),
-		consume.MapFilter(consume.AppendTo(&right), withBalance),
-	)
-	var entry fin.Entry
-	entry = fin.Entry{CatPayment: makeTotal(-400)}
-	consumer.Consume(&entry)
-	entry = fin.Entry{CatPayment: makeTotal(-700)}
-	consumer.Consume(&entry)
-	assert.Equal(int64(347), left[0].Balance)
-	assert.Equal(int64(347), right[0].Balance)
-	assert.Equal(int64(747), left[1].Balance)
-	assert.Equal(int64(747), right[1].Balance)
+	var ebs []fin.EntryBalance
+	consumer := consume2.Map(consume2.AppendTo(&ebs), WithBalance(347))
+	consumer.Consume(fin.Entry{CatPayment: makeTotal(-400)})
+	consumer.Consume(fin.Entry{CatPayment: makeTotal(-700)})
+	assert.Equal(int64(347), ebs[0].Balance)
+	assert.Equal(int64(747), ebs[1].Balance)
 }
 
 func TestCompileAdvanceSearchSpec(t *testing.T) {
@@ -67,22 +58,27 @@ func TestAccountFiltering(t *testing.T) {
 	entry := fin.Entry{CatPayment: builder.Build()}
 
 	filterer := CompileAdvanceSearchSpec(&AdvanceSearchSpec{AccountId: 0})
-	result := filterer.MapFilter(&entry).(*fin.Entry)
+	result := entry
+	assert.True(filterer(&result))
 	assert.Equal(int64(-8100), result.Total())
 
 	filterer = CompileAdvanceSearchSpec(&AdvanceSearchSpec{AccountId: 5})
-	result = filterer.MapFilter(&entry).(*fin.Entry)
+	result = entry
+	assert.True(filterer(&result))
 	assert.Equal(int64(-8100), result.Total())
 
 	filterer = CompileAdvanceSearchSpec(&AdvanceSearchSpec{AccountId: 3})
-	result = filterer.MapFilter(&entry).(*fin.Entry)
+	result = entry
+	assert.True(filterer(&result))
 	assert.Equal(int64(3400), result.Total())
 
 	filterer = CompileAdvanceSearchSpec(&AdvanceSearchSpec{AccountId: 2})
-	assert.Nil(filterer.MapFilter(&entry))
+	result = entry
+	assert.False(filterer(&result))
 
 	filterer = CompileAdvanceSearchSpec(&AdvanceSearchSpec{AccountId: -4})
-	assert.Nil(filterer.MapFilter(&entry))
+	result = entry
+	assert.False(filterer(&result))
 
 	catIs302 := func(c fin.Cat) bool { return c == fin.NewCat("0:302") }
 	amountIsNeg4700 := func(amt int64) bool { return amt == -4700 }
@@ -90,33 +86,36 @@ func TestAccountFiltering(t *testing.T) {
 
 	filterer = CompileAdvanceSearchSpec(
 		&AdvanceSearchSpec{AccountId: 5, CF: catIs302, AF: amountIsNeg4700})
-	result = filterer.MapFilter(&entry).(*fin.Entry)
+	result = entry
+	assert.True(filterer(&result))
 	assert.Equal(int64(-4700), result.Total())
 
 	filterer = CompileAdvanceSearchSpec(
 		&AdvanceSearchSpec{AccountId: 5, CF: catIs302, AF: amountIsNeg8100})
-	assert.Nil(filterer.MapFilter(&entry))
+	result = entry
+	assert.False(filterer(&result))
 
 	filterer = CompileAdvanceSearchSpec(
 		&AdvanceSearchSpec{AccountId: 3, CF: catIs302})
-	assert.Nil(filterer.MapFilter(&entry))
+	result = entry
+	assert.False(filterer(&result))
 }
 
-func runFilter(f consume.MapFilterer) int {
+func runFilter(f func(ptr *fin.Entry) bool) int {
 	result := 0
-	if f.MapFilter(&fin.Entry{Name: "Name 1", Desc: "Desc 1"}) != nil {
+	if f(&fin.Entry{Name: "Name 1", Desc: "Desc 1"}) {
 		result++
 	}
-	if f.MapFilter(&fin.Entry{Name: "Name 2", Desc: "Other"}) != nil {
+	if f(&fin.Entry{Name: "Name 2", Desc: "Other"}) {
 		result++
 	}
-	if f.MapFilter(&fin.Entry{Name: "Other", Desc: "Other"}) != nil {
+	if f(&fin.Entry{Name: "Other", Desc: "Other"}) {
 		result++
 	}
-	if f.MapFilter(&fin.Entry{
+	if f(&fin.Entry{
 		Name:       "Name 3",
 		Desc:       "Desc 3",
-		CatPayment: makeTotal(-200)}) != nil {
+		CatPayment: makeTotal(-200)}) {
 		result++
 	}
 	return result

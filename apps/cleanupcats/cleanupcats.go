@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	for_csqlite "github.com/keep94/finances/fin/categories/categoriesdb/for_sqlite"
 	"github.com/keep94/finances/fin/consumers"
@@ -41,7 +41,7 @@ func main() {
 		err := store.Entries(
 			t,
 			nil,
-			consume.Compose(
+			consume2.Compose(
 				consumers.FromCatPaymentAggregator(totals),
 				consumers.FromCatPaymentAggregator(allAccounts)))
 		if err != nil {

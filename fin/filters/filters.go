@@ -2,19 +2,22 @@
 package filters
 
 import (
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/toolbox/str_util"
 	"strings"
 )
 
-// WithBalance returns a consume.Mapper that maps a fin.Entry to a
+// WithBalance returns a function that maps a fin.Entry to a
 // fin.EntryBalance. balance is the current balance of the account.
-// fin.Entry values must be passed to returned Mapper from newest to oldest.
-// Returned Mapper maps each fin.Entry value to a fin.EntryBalance value
-// that includes the balance at that fin.Entry value.
-func WithBalance(balance int64) consume.Mapper {
-	return &entryBalanceMapper{balance: balance}
+// fin.Entry values must be passed to returned function from newest to oldest.
+func WithBalance(balance int64) func(entry fin.Entry) fin.EntryBalance {
+	return func(entry fin.Entry) (result fin.EntryBalance) {
+		result.Entry = entry
+		result.Balance = balance
+		balance -= entry.Total()
+		return
+	}
 }
 
 // AmountFilter filters by amount. Returns true if amt should be included or
@@ -35,13 +38,14 @@ type AdvanceSearchSpec struct {
 }
 
 // CompileAdvanceSearchSpec compiles a search specification.
-func CompileAdvanceSearchSpec(spec *AdvanceSearchSpec) consume.MapFilterer {
-	var filters []interface{}
+func CompileAdvanceSearchSpec(
+	spec *AdvanceSearchSpec) func(ptr *fin.Entry) bool {
+	var filters []func(ptr *fin.Entry) bool
 	if spec.AccountId != 0 {
-		filters = append(filters, byAccountMapper(spec.AccountId))
+		filters = append(filters, byAccountFilterer(spec.AccountId))
 	}
 	if spec.CF != nil {
-		filters = append(filters, byCatMapper(spec.CF))
+		filters = append(filters, byCatFilterer(spec.CF))
 	}
 	if spec.AF != nil {
 		filters = append(filters, byAmountFilterer(spec.AF))
@@ -52,55 +56,35 @@ func CompileAdvanceSearchSpec(spec *AdvanceSearchSpec) consume.MapFilterer {
 	if spec.Desc != "" {
 		filters = append(filters, byDescFilterer(str_util.Normalize(spec.Desc)))
 	}
-	return consume.NewMapFilterer(filters...)
+	return consume2.ComposeFilters(filters...)
 }
 
-func byAccountMapper(accountId int64) consume.Mapper {
-	return EntryMapper(func(src, dest *fin.Entry) bool {
-		*dest = *src
-		return dest.WithPayment(accountId)
-	})
+func byAccountFilterer(accountId int64) func(ptr *fin.Entry) bool {
+	return func(ptr *fin.Entry) bool {
+		return ptr.WithPayment(accountId)
+	}
 }
 
-func byCatMapper(f fin.CatFilter) consume.Mapper {
-	return EntryMapper(func(src, dest *fin.Entry) bool {
-		*dest = *src
-		return dest.WithCat(f)
-	})
+func byCatFilterer(f fin.CatFilter) func(ptr *fin.Entry) bool {
+	return func(ptr *fin.Entry) bool {
+		return ptr.WithCat(f)
+	}
 }
 
-func byAmountFilterer(f AmountFilter) consume.Filterer {
-	return EntryFilterer(func(ptr *fin.Entry) bool {
+func byAmountFilterer(f AmountFilter) func(ptr *fin.Entry) bool {
+	return func(ptr *fin.Entry) bool {
 		return f(ptr.Total())
-	})
+	}
 }
 
-func byNameFilterer(name string) consume.Filterer {
-	return EntryFilterer(func(ptr *fin.Entry) bool {
+func byNameFilterer(name string) func(ptr *fin.Entry) bool {
+	return func(ptr *fin.Entry) bool {
 		return strings.Index(str_util.Normalize(ptr.Name), name) != -1
-	})
+	}
 }
 
-func byDescFilterer(desc string) consume.Filterer {
-	return EntryFilterer(func(ptr *fin.Entry) bool {
+func byDescFilterer(desc string) func(ptr *fin.Entry) bool {
+	return func(ptr *fin.Entry) bool {
 		return strings.Index(str_util.Normalize(ptr.Desc), desc) != -1
-	})
-}
-
-type entryBalanceMapper struct {
-	balance int64
-	temp    fin.EntryBalance
-}
-
-func (e *entryBalanceMapper) Map(ptr interface{}) interface{} {
-	p := ptr.(*fin.Entry)
-	e.temp.Entry = *p
-	e.temp.Balance = e.balance
-	e.balance -= p.Total()
-	return &e.temp
-}
-
-func (e *entryBalanceMapper) Clone() consume.Mapper {
-	result := *e
-	return &result
+	}
 }

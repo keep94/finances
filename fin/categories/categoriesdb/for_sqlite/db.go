@@ -2,7 +2,7 @@
 package for_sqlite
 
 import (
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	fsqlite "github.com/keep94/finances/fin/findb/for_sqlite"
@@ -142,26 +142,20 @@ func (r *rawCatDbRow) ValuePtr() interface{} {
 	return r.CatDbRow
 }
 
-func expenseCategories(conn *sqlite.Conn, consumer consume.Consumer) error {
-	stmt, err := conn.Prepare("select id, name, is_active, parent_id from expense_categories")
-	if err != nil {
-		return err
-	}
-	defer stmt.Finalize()
-	return sqlite_rw.ReadRows(
+func expenseCategories(
+	conn *sqlite.Conn, consumer consume2.Consumer[categories.CatDbRow]) error {
+	return sqlite_rw.ReadMultiple(
+		conn,
 		(&rawCatDbRow{}).init(&categories.CatDbRow{}),
-		stmt,
-		consumer)
+		consume2.NewNoGenerics(consumer),
+		"select id, name, is_active, parent_id from expense_categories")
 }
 
-func incomeCategories(conn *sqlite.Conn, consumer consume.Consumer) error {
-	stmt, err := conn.Prepare("select id, name, is_active, parent_id from income_categories")
-	if err != nil {
-		return err
-	}
-	defer stmt.Finalize()
-	return sqlite_rw.ReadRows(
+func incomeCategories(
+	conn *sqlite.Conn, consumer consume2.Consumer[categories.CatDbRow]) error {
+	return sqlite_rw.ReadMultiple(
+		conn,
 		(&rawCatDbRow{}).init(&categories.CatDbRow{}),
-		stmt,
-		consumer)
+		consume2.NewNoGenerics(consumer),
+		"select id, name, is_active, parent_id from income_categories")
 }

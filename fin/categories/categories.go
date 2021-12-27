@@ -694,9 +694,8 @@ func (c *AccountDetailConsumer) CanConsume() bool {
 	return true
 }
 
-func (c *AccountDetailConsumer) Consume(ptr interface{}) {
-	account := ptr.(*fin.Account)
-	c.Builder.AddAccount(account)
+func (c *AccountDetailConsumer) Consume(account fin.Account) {
+	c.Builder.AddAccount(&account)
 }
 
 // CatDetailConsumer populates a CatDetailStoreBuilder value with CatDbRow values.
@@ -711,9 +710,8 @@ func (c *CatDetailConsumer) CanConsume() bool {
 	return true
 }
 
-func (c *CatDetailConsumer) Consume(ptr interface{}) {
-	row := ptr.(*CatDbRow)
-	c.Builder.AddCatDbRow(c.Type, row)
+func (c *CatDetailConsumer) Consume(row CatDbRow) {
+	c.Builder.AddCatDbRow(c.Type, &row)
 }
 
 type catDetails []CatDetail

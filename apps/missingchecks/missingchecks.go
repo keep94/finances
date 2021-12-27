@@ -7,11 +7,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	csqlite "github.com/keep94/finances/fin/categories/categoriesdb/for_sqlite"
 	"github.com/keep94/finances/fin/checks"
-	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
 	"github.com/keep94/gosqlite/sqlite"
@@ -51,30 +50,26 @@ func main() {
 	}
 	var account fin.Account
 	var checkNos []int
-	cf := consume.AppendToSaveMemory(&checkNos)
 	err = doer.Do(func(t db.Transaction) error {
 		return findb.EntriesByAccountId(
 			t,
 			store,
 			accountDetail.Id(),
 			&account,
-			consume.MapFilter(
-				cf,
-				filters.EntryBalanceIntMapper(
-					func(entryPtr *fin.EntryBalance, checkNoPtr *int) bool {
-						// It can't be a valid check if it is a credit
-						if entryPtr.Total() > 0 {
-							return false
-						}
-						checkNo, err := strconv.Atoi(entryPtr.CheckNo)
-						if err != nil {
-							return false
-						}
-						*checkNoPtr = checkNo
-						return true
-					})))
+			consume2.MaybeMap(
+				consume2.AppendTo(&checkNos),
+				func(entry fin.EntryBalance) (int, bool) {
+					// It can't be a valid check if it is a credit
+					if entry.Total() > 0 {
+						return 0, false
+					}
+					result, err := strconv.Atoi(entry.CheckNo)
+					if err != nil {
+						return 0, false
+					}
+					return result, true
+				}))
 	})
-	cf.Finalize()
 	if err != nil {
 		log.Fatal(err)
 	}

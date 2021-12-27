@@ -96,7 +96,7 @@ func aggregate(start, end time.Time, bpt *ByPeriodTotaler) {
 	for date := start; date.Before(end); date = date.AddDate(0, 0, 1) {
 		entry.Date = date
 		entry.CatPayment = fin.NewCatPayment(fin.Expense, amount, false, 0)
-		bpt.Include(&entry)
+		bpt.Include(entry)
 		amount++
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/aggregators"
@@ -227,18 +227,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	elo := creater.CreateEntryListOptions(r.Form)
 
 	var totaler *aggregators.Totaler
-	var entries []fin.Entry
-	var morePages bool
-	epb := consume.Page(pageNo, h.PageSize, &entries, &morePages)
+	pager := consume2.NewPageBuilder[fin.Entry](pageNo, h.PageSize)
 	if filter != nil && elo.Start != nil {
 		totaler = &aggregators.Totaler{}
 	}
-	err := h.Store.Entries(nil, elo, buildConsumer(epb, filter, totaler))
-	epb.Finalize()
+	err := h.Store.Entries(nil, elo, buildConsumer(pager, filter, totaler))
 	if err != nil {
 		http_util.ReportError(w, "Error reading database.", err)
 		return
 	}
+	entries, morePages := pager.Build()
 	var listEntriesUrl *url.URL
 	if h.Links {
 		listEntriesUrl = r.URL
@@ -264,16 +262,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func buildConsumer(
-	consumer consume.Consumer,
-	filter consume.MapFilterer,
-	totaler *aggregators.Totaler) consume.Consumer {
+	consumer consume2.Consumer[fin.Entry],
+	filter func(ptr *fin.Entry) bool,
+	totaler *aggregators.Totaler) consume2.Consumer[fin.Entry] {
 	if totaler != nil {
-		consumer = consume.Compose(
+		consumer = consume2.Compose(
 			consumers.FromCatPaymentAggregator(totaler),
 			consumer)
 	}
 	if filter != nil {
-		consumer = consume.MapFilter(consumer, filter)
+		consumer = consume2.Filterp(consumer, filter)
 	}
 	return consumer
 }
@@ -294,7 +292,7 @@ func (c *creater) CreateEntryListOptions(
 }
 
 func (c *creater) CreateFilterer(
-	values url.Values, cds categories.CatDetailStore) consume.MapFilterer {
+	values url.Values, cds categories.CatDetailStore) func(*fin.Entry) bool {
 	filt := createCatFilter(values, cds)
 	accountId, _ := strconv.ParseInt(values.Get("acctId"), 10, 64)
 	amtFilter := c.createAmountFilter(values.Get("range"))

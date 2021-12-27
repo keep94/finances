@@ -511,7 +511,7 @@ func (a AccountDeltas) _add(id int64, amount int64, reconciled bool, multiplier 
 // CatTotals represents category totals
 type CatTotals map[Cat]int64
 
-func (c CatTotals) Include(catPayment *CatPayment) {
+func (c CatTotals) Include(catPayment CatPayment) {
 	for i := range catPayment.cr {
 		catrec := &catPayment.cr[i]
 		if catrec.Cat.Type != AccountCat {
@@ -523,7 +523,7 @@ func (c CatTotals) Include(catPayment *CatPayment) {
 // AccountSet represents a set of account ids.
 type AccountSet map[int64]bool
 
-func (a AccountSet) Include(catPayment *CatPayment) {
+func (a AccountSet) Include(catPayment CatPayment) {
 	for i := range catPayment.cr {
 		catrec := &catPayment.cr[i]
 		if catrec.Cat.Type == AccountCat {

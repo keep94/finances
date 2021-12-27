@@ -2,51 +2,32 @@
 package consumers
 
 import (
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 )
 
 // CatPaymentAggregator aggregates CatPayment values.
 type CatPaymentAggregator interface {
-	Include(cp *fin.CatPayment)
+	Include(cp fin.CatPayment)
 }
 
 // EntryAggregator aggregates Entry values.
 type EntryAggregator interface {
-	Include(entry *fin.Entry)
+	Include(entry fin.Entry)
 }
 
 // FromCatPaymentAggregator converts a CatPaymentAggregator to a Consumer of
 // fin.Entry values.
 func FromCatPaymentAggregator(
-	aggregator CatPaymentAggregator) consume.Consumer {
-	return entryAggregatorConsumer{aggregator: catPaymentToEntryAggregator{aggregator}}
+	aggregator CatPaymentAggregator) consume2.Consumer[fin.Entry] {
+	return consume2.ConsumerFunc[fin.Entry](func(entry fin.Entry) {
+		aggregator.Include(entry.CatPayment)
+	})
 }
 
 // FromEntryAggregator converts a EntryAggregator to a Consumer of
 // fin.Entry values.
 func FromEntryAggregator(
-	aggregator EntryAggregator) consume.Consumer {
-	return entryAggregatorConsumer{aggregator: aggregator}
-}
-
-type entryAggregatorConsumer struct {
-	aggregator EntryAggregator
-}
-
-func (e entryAggregatorConsumer) Consume(ptr interface{}) {
-	entry := ptr.(*fin.Entry)
-	e.aggregator.Include(entry)
-}
-
-func (e entryAggregatorConsumer) CanConsume() bool {
-	return true
-}
-
-type catPaymentToEntryAggregator struct {
-	cpa CatPaymentAggregator
-}
-
-func (c catPaymentToEntryAggregator) Include(entry *fin.Entry) {
-	c.cpa.Include(&entry.CatPayment)
+	aggregator EntryAggregator) consume2.Consumer[fin.Entry] {
+	return consume2.ConsumerFunc[fin.Entry](aggregator.Include)
 }

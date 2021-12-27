@@ -2,7 +2,7 @@ package trends
 
 import (
 	"errors"
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/aggregators"
@@ -256,8 +256,8 @@ func (h *Handler) singleCat(
 	// Only to see what the child categories are
 	ct := make(fin.CatTotals)
 	totals := createByPeriodTotaler(start, end, isYearly)
-	cr := consume.MapFilter(
-		consume.Compose(
+	cr := consume2.Filterp(
+		consume2.Compose(
 			consumers.FromCatPaymentAggregator(ct),
 			consumers.FromEntryAggregator(totals)),
 		filters.CompileAdvanceSearchSpec(
@@ -316,14 +316,14 @@ func (h *Handler) allCats(
 	ct := make(fin.CatTotals)
 	expenseTotals := createByPeriodTotaler(start, end, isYearly)
 	incomeTotals := createByPeriodTotaler(start, end, isYearly)
-	cr := consume.Compose(
+	cr := consume2.Compose(
 		consumers.FromCatPaymentAggregator(ct),
-		consume.MapFilter(
+		consume2.Filterp(
 			consumers.FromEntryAggregator(expenseTotals),
 			filters.CompileAdvanceSearchSpec(
 				&filters.AdvanceSearchSpec{
 					CF: cds.Filter(fin.Expense, true)})),
-		consume.MapFilter(
+		consume2.Filterp(
 			consumers.FromEntryAggregator(incomeTotals),
 			filters.CompileAdvanceSearchSpec(
 				&filters.AdvanceSearchSpec{

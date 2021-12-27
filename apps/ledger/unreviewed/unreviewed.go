@@ -2,7 +2,7 @@ package unreviewed
 
 import (
 	"fmt"
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
@@ -199,14 +199,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	entries := make([]fin.Entry, 0, h.PageSize)
-	cf := consume.AppendToSaveMemory(&entries)
-	consumer := consume.Slice(cf, 0, h.PageSize)
+	consumer := consume2.Slice(consume2.AppendTo(&entries), 0, h.PageSize)
 	cds := categories.CatDetailStore{}
 	err := h.Doer.Do(func(t db.Transaction) error {
 		cds, _ = cache.Get(t)
 		return store.Entries(t, &findb.EntryListOptions{Unreviewed: true}, consumer)
 	})
-	cf.Finalize()
 	if err != nil {
 		http_util.ReportError(w, "Error reading database.", err)
 		return

@@ -12,10 +12,8 @@ func TestFromCatPaymentAggregator(t *testing.T) {
 	}
 	aggregator := catPaymentTotaler{}
 	consumer := FromCatPaymentAggregator(&aggregator)
-	entry := entries[0]
-	consumer.Consume(&entry)
-	entry = entries[1]
-	consumer.Consume(&entry)
+	consumer.Consume(entries[0])
+	consumer.Consume(entries[1])
 	if aggregator.total != 1100 {
 		t.Errorf("Expected 1100, got %v", aggregator.total)
 	}
@@ -28,10 +26,8 @@ func TestFromEntryAggregator(t *testing.T) {
 	}
 	aggregator := entryTotaler{}
 	consumer := FromEntryAggregator(&aggregator)
-	entry := entries[0]
-	consumer.Consume(&entry)
-	entry = entries[1]
-	consumer.Consume(&entry)
+	consumer.Consume(entries[0])
+	consumer.Consume(entries[1])
 	if aggregator.total != 1100 {
 		t.Errorf("Expected 1100, got %v", aggregator.total)
 	}
@@ -45,7 +41,7 @@ type entryTotaler struct {
 	total int64
 }
 
-func (e *entryTotaler) Include(entry *fin.Entry) {
+func (e *entryTotaler) Include(entry fin.Entry) {
 	e.total += entry.Total()
 }
 
@@ -53,6 +49,6 @@ type catPaymentTotaler struct {
 	total int64
 }
 
-func (c *catPaymentTotaler) Include(cp *fin.CatPayment) {
+func (c *catPaymentTotaler) Include(cp fin.CatPayment) {
 	c.total += cp.Total()
 }

@@ -5,12 +5,11 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	"github.com/keep94/finances/fin/categories/categoriesdb"
-	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/http_util"
@@ -137,9 +136,8 @@ func (h *Handler) doPost(
 	columns[3] = "Desc"
 	columns[4] = "Amount"
 	csvWriter.Write(columns[:])
-	var consumer consume.Consumer
-	consumer = consume.ConsumerFunc(func(ptr interface{}) {
-		entry := ptr.(*fin.Entry)
+	var consumer consume2.Consumer[fin.Entry]
+	consumer = consume2.ConsumerFunc[fin.Entry](func(entry fin.Entry) {
 		columns[0] = entry.Date.Format("1/2/2006")
 		columns[1] = entry.CheckNo
 		columns[2] = entry.Name
@@ -147,13 +145,13 @@ func (h *Handler) doPost(
 		columns[4] = fin.FormatUSD(-entry.Total())
 		csvWriter.Write(columns[:])
 	})
-	consumer = consume.Slice(consumer, 0, kMaxLines+1)
-	consumer = consume.MapFilter(
+	consumer = consume2.Slice(consumer, 0, kMaxLines+1)
+	consumer = consume2.MaybeMap(
 		consumer,
-		filters.EntryMapper(func(src, dest *fin.Entry) bool {
-			*dest = *src
-			return dest.WithPayment(acctId)
-		}))
+		func(entry fin.Entry) (fin.Entry, bool) {
+			ok := entry.WithPayment(acctId)
+			return entry, ok
+		})
 	err = h.Store.Entries(nil, elo, consumer)
 	if err == nil && !consumer.CanConsume() {
 		err = errors.New("File too big. Try a smaller date range")

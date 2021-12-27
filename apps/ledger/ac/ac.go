@@ -2,7 +2,7 @@ package ac
 
 import (
 	"encoding/json"
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/aggregators"
 	"github.com/keep94/finances/fin/consumers"
@@ -17,13 +17,13 @@ const (
 
 type Handler struct {
 	Store findb.EntriesRunner
-	Field func(e *fin.Entry) string
+	Field func(e fin.Entry) string
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	aca := &aggregators.AutoCompleteAggregator{Field: h.Field}
 	acc := consumers.FromEntryAggregator(aca)
-	acc = consume.Slice(acc, 0, kMaxAutoComplete)
+	acc = consume2.Slice(acc, 0, kMaxAutoComplete)
 	err := h.Store.Entries(nil, nil, acc)
 	if err != nil {
 		http_util.ReportError(w, "Error reading database.", err)

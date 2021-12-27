@@ -16,7 +16,7 @@ type Totaler struct {
 	Total int64
 }
 
-func (t *Totaler) Include(cp *fin.CatPayment) {
+func (t *Totaler) Include(cp fin.CatPayment) {
 	t.Total += cp.Total()
 }
 
@@ -24,10 +24,10 @@ func (t *Totaler) Include(cp *fin.CatPayment) {
 type AutoCompleteAggregator struct {
 	str_util.AutoComplete
 	// The field on which to find auto complete candidates
-	Field func(e *fin.Entry) string
+	Field func(e fin.Entry) string
 }
 
-func (a *AutoCompleteAggregator) Include(e *fin.Entry) {
+func (a *AutoCompleteAggregator) Include(e fin.Entry) {
 	a.Add(a.Field(e))
 }
 
@@ -82,7 +82,7 @@ func NewByPeriodTotaler(start, end time.Time, recurring Recurring) *ByPeriodTota
 		make(map[time.Time]int64)}
 }
 
-func (b *ByPeriodTotaler) Include(entry *fin.Entry) {
+func (b *ByPeriodTotaler) Include(entry fin.Entry) {
 	if entry.Date.Before(b.start) || !b.end.After(entry.Date) {
 		return
 	}

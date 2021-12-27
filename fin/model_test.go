@@ -196,7 +196,7 @@ func TestCatTotals(t *testing.T) {
 		CatRec{NewCat("0:3"), 2000, true}).AddCatRec(
 		CatRec{NewCat("2:2"), 1000, false}).SetPaymentId(
 		1).SetReconciled(false).Build()
-	ct.Include(&cp)
+	ct.Include(cp)
 	var expected CatTotals = map[Cat]int64{
 		Cat{3, ExpenseCat}: 2000,
 		Cat{7, ExpenseCat}: 6000,
@@ -211,7 +211,7 @@ func TestCatTotals(t *testing.T) {
 		CatRec{NewCat("0:4"), 1500, true}).AddCatRec(
 		CatRec{NewCat("2:2"), 1000, false}).SetPaymentId(
 		1).SetReconciled(false).Build()
-	ct.Include(&cp)
+	ct.Include(cp)
 	expected = map[Cat]int64{
 		Cat{3, ExpenseCat}: 2000,
 		Cat{4, ExpenseCat}: 1500,
@@ -232,7 +232,7 @@ func TestAccountSet(t *testing.T) {
 		CatRec{NewCat("2:4"), 2000, true}).AddCatRec(
 		CatRec{NewCat("2:2"), 1000, false}).SetPaymentId(
 		1).SetReconciled(false).Build()
-	as.Include(&cp)
+	as.Include(cp)
 	var expected AccountSet = AccountSet{1: true, 2: true, 4: true}
 	if !reflect.DeepEqual(expected, as) {
 		t.Errorf("Expected %v, got %v", expected, as)

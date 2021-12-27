@@ -40,7 +40,7 @@ func NewByNameCategorizerBuilder(n, k int) *ByNameCategorizerBuilder {
 }
 
 // Include trains this instance with a particular entry.
-func (b *ByNameCategorizerBuilder) Include(entry *fin.Entry) {
+func (b *ByNameCategorizerBuilder) Include(entry fin.Entry) {
 	normalizedName := categorizerNormalizeName(entry.Name)
 	data := b.trainingData[normalizedName]
 	cat := extractSingleCat(&entry.CatPayment)

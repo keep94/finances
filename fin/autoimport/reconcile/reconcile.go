@@ -44,9 +44,8 @@ func New(entries []*fin.Entry) ByAmountCheckNo {
 	return result
 }
 
-func (b ByAmountCheckNo) Include(e *fin.Entry) {
-	eCopy := *e
-	b.includePtr(&eCopy)
+func (b ByAmountCheckNo) Include(entry fin.Entry) {
+	b.includePtr(&entry)
 }
 
 // Reconcile reconciles the entries from the bank in this instance with the

@@ -97,8 +97,7 @@ func addToBuilder(builder *ByNameCategorizerBuilder, name string, cats ...fin.Ca
 	for _, cat := range cats {
 		cp.AddCatRec(fin.CatRec{Cat: cat, Amount: 100})
 	}
-	entry := fin.Entry{Name: name, CatPayment: cp.Build()}
-	builder.Include(&entry)
+	builder.Include(fin.Entry{Name: name, CatPayment: cp.Build()})
 }
 
 func verifyNoMatch(t *testing.T, builder *ByNameCategorizerBuilder, name string) {

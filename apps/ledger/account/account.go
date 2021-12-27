@@ -2,7 +2,7 @@ package account
 
 import (
 	"fmt"
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
@@ -109,21 +109,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		pageNo = 0
 	}
 	cds := categories.CatDetailStore{}
-	var entryBalances []fin.EntryBalance
-	var morePages bool
-	consumer := consume.Page(pageNo, h.PageSize, &entryBalances, &morePages)
+	pager := consume2.NewPageBuilder[fin.EntryBalance](pageNo, h.PageSize)
 	account := fin.Account{}
 	err := h.Doer.Do(func(t db.Transaction) (err error) {
 		cds, err = h.Cdc.Get(t)
 		if err != nil {
 			return
 		}
-		err = findb.EntriesByAccountId(t, h.Store, id, &account, consumer)
-		if err != nil {
-			return
-		}
-		consumer.Finalize()
-		return
+		return findb.EntriesByAccountId(t, h.Store, id, &account, pager)
 	})
 	if err == findb.NoSuchId {
 		fmt.Fprintln(w, "No such account.")
@@ -133,6 +126,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http_util.ReportError(w, "Error reading database.", err)
 		return
 	}
+	entryBalances, morePages := pager.Build()
 	var listEntriesUrl *url.URL
 	if h.Links {
 		listEntriesUrl = kListEntriesUrl

@@ -3,7 +3,7 @@ package upload
 import (
 	"bytes"
 	"errors"
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/aggregators"
@@ -203,7 +203,7 @@ func (h *Handler) serveConfirmPage(w http.ResponseWriter, r *http.Request, acctI
 			store.Entries(
 				nil,
 				nil,
-				consume.Slice(
+				consume2.Slice(
 					consumers.FromEntryAggregator(categorizerBuilder),
 					0,
 					kAutoCategorizeLookBack),

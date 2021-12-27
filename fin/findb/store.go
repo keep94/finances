@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/keep94/consume"
+	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/toolbox/db"
@@ -29,7 +29,7 @@ type AccountByIdRunner interface {
 
 type AccountsRunner interface {
 	// Accounts fetches all accounts.
-	Accounts(t db.Transaction, consumer consume.Consumer) error
+	Accounts(t db.Transaction, consumer consume2.Consumer[fin.Account]) error
 }
 
 type ActiveAccountsRunner interface {
@@ -71,7 +71,7 @@ type EntriesRunner interface {
 	// options.Unreviewed == true, then Entries computes the etag for
 	// each fetched entry.
 	Entries(t db.Transaction, options *EntryListOptions,
-		consumer consume.Consumer) error
+		consumer consume2.Consumer[fin.Entry]) error
 }
 
 type EntriesByAccountIdRunner interface {
@@ -89,7 +89,7 @@ func UnreconciledEntries(
 	store EntriesByAccountIdRunner,
 	acctId int64,
 	account *fin.Account,
-	consumer consume.Consumer) error {
+	consumer consume2.Consumer[fin.Entry]) error {
 	if t == nil {
 		panic(kNonNilTransactionRequired)
 	}
@@ -99,13 +99,13 @@ func UnreconciledEntries(
 	if err := store.AccountById(t, acctId, account); err != nil {
 		return err
 	}
-	consumer = consume.Slice(consumer, 0, account.Count-account.RCount)
-	consumer = consume.MapFilter(
+	consumer = consume2.Slice(consumer, 0, account.Count-account.RCount)
+	consumer = consume2.MaybeMap(
 		consumer,
-		filters.EntryMapper(func(src, dest *fin.Entry) bool {
-			*dest = *src
-			return dest.WithPayment(acctId) && !dest.Reconciled()
-		}))
+		func(entry fin.Entry) (fin.Entry, bool) {
+			ok := entry.WithPayment(acctId) && !entry.Reconciled()
+			return entry, ok
+		})
 	return store.Entries(t, nil, consumer)
 }
 
@@ -118,7 +118,7 @@ func EntriesByAccountId(
 	store EntriesByAccountIdRunner,
 	acctId int64,
 	account *fin.Account,
-	consumer consume.Consumer) error {
+	consumer consume2.Consumer[fin.EntryBalance]) error {
 	if t == nil {
 		panic(kNonNilTransactionRequired)
 	}
@@ -128,15 +128,16 @@ func EntriesByAccountId(
 	if err := store.AccountById(t, acctId, account); err != nil {
 		return err
 	}
-	consumer = consume.Slice(consumer, 0, account.Count)
-	consumer = consume.MapFilter(
-		consumer,
-		filters.EntryMapper(func(src, dest *fin.Entry) bool {
-			*dest = *src
-			return dest.WithPayment(acctId)
-		}),
-		filters.WithBalance(account.Balance))
-	return store.Entries(t, nil, consumer)
+	consumer = consume2.Slice(consumer, 0, account.Count)
+	entryConsumer := consume2.Map(
+		consumer, filters.WithBalance(account.Balance))
+	entryConsumer = consume2.MaybeMap(
+		entryConsumer,
+		func(entry fin.Entry) (fin.Entry, bool) {
+			ok := entry.WithPayment(acctId)
+			return entry, ok
+		})
+	return store.Entries(t, nil, entryConsumer)
 }
 
 type EntryByIdRunner interface {
@@ -163,7 +164,9 @@ type RecurringEntryByIdRunner interface {
 type RecurringEntriesRunner interface {
 	// RecurringEntries gets all the recurring entries sorted by date
 	// in ascending order.
-	RecurringEntries(t db.Transaction, consumer consume.Consumer) error
+	RecurringEntries(
+		t db.Transaction,
+		consumer consume2.Consumer[fin.RecurringEntry]) error
 }
 
 type RemoveRecurringEntryByIdRunner interface {
@@ -193,7 +196,7 @@ type UserByNameRunner interface {
 
 type UsersRunner interface {
 	//Users gets all the users sorted by user name.
-	Users(t db.Transaction, consumer consume.Consumer) error
+	Users(t db.Transaction, consumer consume2.Consumer[fin.User]) error
 }
 
 type RemoveUserByNameRunner interface {
@@ -237,7 +240,7 @@ func (n NoPermissionStore) AccountById(
 }
 
 func (n NoPermissionStore) Accounts(
-	t db.Transaction, consumer consume.Consumer) error {
+	t db.Transaction, consumer consume2.Consumer[fin.Account]) error {
 	return NoPermission
 }
 
@@ -272,7 +275,7 @@ func (n NoPermissionStore) DoEntryChanges(
 }
 
 func (n NoPermissionStore) Entries(t db.Transaction, options *EntryListOptions,
-	consumer consume.Consumer) error {
+	consumer consume2.Consumer[fin.Entry]) error {
 	return NoPermission
 }
 
@@ -297,7 +300,8 @@ func (n NoPermissionStore) RecurringEntryById(
 }
 
 func (n NoPermissionStore) RecurringEntries(
-	t db.Transaction, consumer consume.Consumer) error {
+	t db.Transaction,
+	consumer consume2.Consumer[fin.RecurringEntry]) error {
 	return NoPermission
 }
 
@@ -322,7 +326,8 @@ func (n NoPermissionStore) UserByName(t db.Transaction, name string, user *fin.U
 	return NoPermission
 }
 
-func (n NoPermissionStore) Users(t db.Transaction, consumer consume.Consumer) error {
+func (n NoPermissionStore) Users(
+	t db.Transaction, consumer consume2.Consumer[fin.User]) error {
 	return NoPermission
 }
 
@@ -499,9 +504,14 @@ func applyRecurringEntriesDryRun(
 	recurringEntriesToUpdate []*fin.RecurringEntry,
 	entriesToAdd []*fin.Entry,
 	err error) {
-	consumer := consume.AppendPtrsTo(&recurringEntriesToUpdate)
+	consumer := consume2.AppendPtrsTo(&recurringEntriesToUpdate)
 	if acctId != 0 {
-		consumer = consume.MapFilter(consumer, accountFilter(acctId))
+		consumer = consume2.Filter(
+			consumer,
+			func(entry fin.RecurringEntry) bool {
+				return entry.WithPayment(acctId)
+			},
+		)
 	}
 	if err = store.RecurringEntries(t, consumer); err != nil {
 		return
@@ -515,11 +525,4 @@ func applyRecurringEntriesDryRun(
 	}
 	recurringEntriesToUpdate = recurringEntriesToUpdate[:idx]
 	return
-}
-
-func accountFilter(acctId int64) consume.Filterer {
-	return filters.RecurringEntryFilterer(func(ptr *fin.RecurringEntry) bool {
-		cp := ptr.CatPayment
-		return cp.WithPayment(acctId)
-	})
 }

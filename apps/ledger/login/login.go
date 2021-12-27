@@ -121,12 +121,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			session.SetLastLogin(user.LastLogin)
 		}
 		if h.PopularityLookback > 0 {
-			var catPopularity fin.CatPopularity
-			consumer := consumers.BuildCatPopularity(
-				h.PopularityLookback, &catPopularity)
-			h.Store.Entries(nil, nil, consumer)
-			consumer.Finalize()
-			session.SetCatPopularity(catPopularity)
+			builder := consumers.NewCatPopularityBuilder(h.PopularityLookback)
+			h.Store.Entries(nil, nil, builder)
+			session.SetCatPopularity(builder.Build())
 		}
 		session.ID = "" // For added security, force a new session ID
 		session.Save(r, w)

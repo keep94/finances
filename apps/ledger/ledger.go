@@ -214,12 +214,12 @@ func main() {
 		"/fin/acname",
 		&ac.Handler{
 			Store: kReadOnlyStore,
-			Field: func(e *fin.Entry) string { return e.Name }})
+			Field: func(e fin.Entry) string { return e.Name }})
 	mux.Handle(
 		"/fin/acdesc",
 		&ac.Handler{
 			Store: kReadOnlyStore,
-			Field: func(e *fin.Entry) string { return e.Desc }})
+			Field: func(e fin.Entry) string { return e.Desc }})
 
 	defaultHandler := context.ClearHandler(
 		weblogs.HandlerWithOptions(
