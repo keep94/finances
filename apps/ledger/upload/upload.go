@@ -15,7 +15,6 @@ import (
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/http_util"
 	"html/template"
-	"io"
 	"net/http"
 	"path"
 	"strconv"
@@ -279,11 +278,6 @@ func (h *Handler) serveUploadPage(
 	if r.Method == "GET" {
 		h.serverUploadPageGet(w, r, &account)
 	} else {
-		xsrf := ""
-		sdStr := ""
-		qfxFile := bytes.Buffer{}
-		var fileTooLarge bool
-		var loader autoimport.Loader
 		reader, err := r.MultipartReader()
 		if err != nil {
 			// Assume we are getting a post from the confirm form instead
@@ -291,34 +285,21 @@ func (h *Handler) serveUploadPage(
 			h.serverUploadPageGet(w, r, &account)
 			return
 		}
-		for part, err := reader.NextPart(); err == nil; part, err = reader.NextPart() {
-			if part.FormName() == "xsrf" {
-				buffer := bytes.Buffer{}
-				_, err = buffer.ReadFrom(part)
-				if err != nil {
-					http_util.ReportError(w, "Error reading xsrf", err)
-					return
-				}
-				xsrf = buffer.String()
-			} else if part.FormName() == "sd" {
-				buffer := bytes.Buffer{}
-				_, err = buffer.ReadFrom(part)
-				if err != nil {
-					http_util.ReportError(w, "Error reading sd", err)
-					return
-				}
-				sdStr = buffer.String()
-			} else if part.FormName() == "contents" {
-				loader = uploaders[fileExtension(part.FileName())]
-				limitedReader := io.LimitedReader{R: part, N: kMaxUploadSize}
-				qfxFile.ReadFrom(&limitedReader)
-				fileTooLarge = limitedReader.N == 0
-			} else if part.FormName() == "cancel" {
-				accountLinker := common.AccountLinker{}
-				http_util.Redirect(w, r, accountLinker.AccountLink(acctId).String())
-				return
-			}
+		mform, err := http_util.NewMultipartForm(
+			reader, map[string]int{"contents": kMaxUploadSize})
+		if err != nil {
+			http_util.ReportError(w, "Error reading multipart form", err)
+			return
 		}
+		if _, cancel := mform.GetFile("cancel"); cancel {
+			accountLinker := common.AccountLinker{}
+			http_util.Redirect(w, r, accountLinker.AccountLink(acctId).String())
+			return
+		}
+		sdStr := mform.Get("sd")
+		xsrf := mform.Get("xsrf")
+		qfxFile, _ := mform.GetFile("contents")
+		loader := uploaders[fileExtension(qfxFile.FileName)]
 		leftnav := h.LN.Generate(w, r, common.SelectAccount(account.Id))
 		if leftnav == "" {
 			return
@@ -339,11 +320,11 @@ func (h *Handler) serveUploadPage(
 			return
 		}
 		store.UpdateAccountImportSD(nil, acctId, sd)
-		if fileTooLarge {
+		if len(qfxFile.Contents) >= kMaxUploadSize {
 			showView(w, view, errors.New("File too large."))
 			return
 		}
-		if qfxFile.Len() == 0 {
+		if len(qfxFile.Contents) == 0 {
 			showView(w, view, errors.New("Please select a file."))
 			return
 		}
@@ -351,7 +332,8 @@ func (h *Handler) serveUploadPage(
 			showView(w, view, errors.New("File extension not recognized."))
 			return
 		}
-		batch, err := loader.Load(acctId, "", &qfxFile, sd)
+		batch, err := loader.Load(
+			acctId, "", bytes.NewBuffer(qfxFile.Contents), sd)
 		if err != nil {
 			showView(w, view, err)
 			return
