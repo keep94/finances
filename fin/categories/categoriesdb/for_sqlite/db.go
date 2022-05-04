@@ -138,24 +138,24 @@ func (r *rawCatDbRow) Values() []interface{} {
 	return []interface{}{r.Name, r.Active, r.ParentId, r.Id}
 }
 
-func (r *rawCatDbRow) ValuePtr() interface{} {
-	return r.CatDbRow
+func (r *rawCatDbRow) ValueRead() categories.CatDbRow {
+	return *r.CatDbRow
 }
 
 func expenseCategories(
 	conn *sqlite.Conn, consumer consume2.Consumer[categories.CatDbRow]) error {
-	return sqlite_rw.ReadMultiple(
+	return sqlite_rw.ReadMultiple[categories.CatDbRow](
 		conn,
 		(&rawCatDbRow{}).init(&categories.CatDbRow{}),
-		consume2.NewNoGenerics(consumer),
+		consumer,
 		"select id, name, is_active, parent_id from expense_categories")
 }
 
 func incomeCategories(
 	conn *sqlite.Conn, consumer consume2.Consumer[categories.CatDbRow]) error {
-	return sqlite_rw.ReadMultiple(
+	return sqlite_rw.ReadMultiple[categories.CatDbRow](
 		conn,
 		(&rawCatDbRow{}).init(&categories.CatDbRow{}),
-		consume2.NewNoGenerics(consumer),
+		consumer,
 		"select id, name, is_active, parent_id from income_categories")
 }

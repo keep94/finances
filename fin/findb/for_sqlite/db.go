@@ -104,15 +104,15 @@ func entries(conn *sqlite.Conn, options *findb.EntryListOptions, consumer consum
 		}
 	}
 	if options != nil && options.Unreviewed {
-		return sqlite_rw.ReadRowsWithEtag(
+		return sqlite_rw.ReadRowsWithEtag[fin.Entry](
 			(&rawEntry{}).init(&fin.Entry{}),
 			stmt,
-			consume2.NewNoGenerics(consumer))
+			consumer)
 	}
-	return sqlite_rw.ReadRows(
+	return sqlite_rw.ReadRows[fin.Entry](
 		(&rawEntry{}).init(&fin.Entry{}),
 		stmt,
-		consume2.NewNoGenerics(consumer))
+		consumer)
 }
 
 func entryById(conn *sqlite.Conn, id int64, entry *fin.Entry) error {
@@ -234,10 +234,10 @@ func doEntryChanges(conn *sqlite.Conn, changes *findb.EntryChanges) error {
 }
 
 func activeAccounts(conn *sqlite.Conn) (accounts []*fin.Account, err error) {
-	err = sqlite_rw.ReadMultiple(
+	err = sqlite_rw.ReadMultiple[fin.Account](
 		conn,
 		(&rawAccount{}).init(&fin.Account{}),
-		consume2.NewNoGenerics(consume2.AppendPtrsTo(&accounts)),
+		consume2.AppendPtrsTo(&accounts),
 		kSQLActiveAccounts)
 	return
 }
@@ -295,8 +295,8 @@ func (r *rawEntry) SetEtag(etag uint64) {
 	r.Etag = etag
 }
 
-func (r *rawEntry) ValuePtr() interface{} {
-	return r.Entry
+func (r *rawEntry) ValueRead() fin.Entry {
+	return *r.Entry
 }
 
 func (r *rawEntry) Unmarshall() error {
@@ -339,8 +339,8 @@ func (r *rawRecurringEntry) SetEtag(etag uint64) {
 	r.Etag = etag
 }
 
-func (r *rawRecurringEntry) ValuePtr() interface{} {
-	return r.RecurringEntry
+func (r *rawRecurringEntry) ValueRead() fin.RecurringEntry {
+	return *r.RecurringEntry
 }
 
 func (r *rawRecurringEntry) Unmarshall() (err error) {
@@ -380,8 +380,8 @@ func (r *rawAccount) Values() []interface{} {
 	return []interface{}{r.Name, r.Active, r.Balance, r.RBalance, r.Count, r.RCount, r.importSDStr, r.Id}
 }
 
-func (r *rawAccount) ValuePtr() interface{} {
-	return r.Account
+func (r *rawAccount) ValueRead() fin.Account {
+	return *r.Account
 }
 
 func (r *rawAccount) Unmarshall() error {
@@ -414,8 +414,8 @@ func (r *rawUser) Values() []interface{} {
 	return []interface{}{r.Name, r.rawPassword, r.rawPermission, r.rawLastLogin, r.Id}
 }
 
-func (r *rawUser) ValuePtr() interface{} {
-	return r.User
+func (r *rawUser) ValueRead() fin.User {
+	return *r.User
 }
 
 func (r *rawUser) Unmarshall() error {
@@ -540,10 +540,10 @@ func (s Store) AccountById(
 func (s Store) Accounts(
 	t db.Transaction, consumer consume2.Consumer[fin.Account]) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple(
+		return sqlite_rw.ReadMultiple[fin.Account](
 			conn,
 			(&rawAccount{}).init(&fin.Account{}),
-			consume2.NewNoGenerics(consumer),
+			consumer,
 			kSQLAccounts)
 	})
 }
@@ -656,10 +656,10 @@ func (s Store) UserByName(
 func (s Store) Users(
 	t db.Transaction, consumer consume2.Consumer[fin.User]) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple(
+		return sqlite_rw.ReadMultiple[fin.User](
 			conn,
 			(&rawUser{}).init(&fin.User{}),
-			consume2.NewNoGenerics(consumer),
+			consumer,
 			kSQLUsers)
 	})
 }
@@ -698,10 +698,10 @@ func (s Store) RecurringEntryById(
 func (s Store) RecurringEntries(
 	t db.Transaction, consumer consume2.Consumer[fin.RecurringEntry]) error {
 	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple(
+		return sqlite_rw.ReadMultiple[fin.RecurringEntry](
 			conn,
 			(&rawRecurringEntry{}).init(&fin.RecurringEntry{}),
-			consume2.NewNoGenerics(consumer),
+			consumer,
 			kSQLRecurringEntries)
 	})
 }
