@@ -38,7 +38,7 @@ func TestCatPopularity(t *testing.T) {
 	consumer.Consume(entry)
 
 	assert.False(consumer.CanConsume())
-	assert.Panics(func() { consumer.Consume(entry) })
+	consumer.Consume(entry)
 
 	popularities := consumer.Build()
 
