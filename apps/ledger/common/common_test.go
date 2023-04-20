@@ -1,9 +1,9 @@
 package common
 
 import (
-	"github.com/gorilla/sessions"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/autoimport"
+	"github.com/keep94/sessions"
 	"github.com/keep94/toolbox/db"
 	"testing"
 )

@@ -2,11 +2,11 @@ package login
 
 import (
 	"fmt"
-	"github.com/gorilla/sessions"
 	"github.com/keep94/finances/apps/ledger/common"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/consumers"
 	"github.com/keep94/finances/fin/findb"
+	"github.com/keep94/sessions"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/http_util"
 	"github.com/keep94/toolbox/lockout"
