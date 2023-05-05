@@ -2,29 +2,29 @@
 package for_sqlite
 
 import (
+	"database/sql"
+
 	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	fsqlite "github.com/keep94/finances/fin/findb/for_sqlite"
-	"github.com/keep94/gosqlite/sqlite"
-	"github.com/keep94/toolbox/db/sqlite_db"
-	"github.com/keep94/toolbox/db/sqlite_rw"
+	"github.com/keep94/toolbox/db/sqlite3_rw"
 )
 
 // CatDetails populates a CatDetailStore object from the database.
-func catDetails(conn *sqlite.Conn) (
+func catDetails(tx *sql.Tx) (
 	cds categories.CatDetailStore, err error) {
 	cdsb := categories.CatDetailStoreBuilder{}
 	cdc := categories.CatDetailConsumer{Builder: &cdsb, Type: fin.ExpenseCat}
-	if err = expenseCategories(conn, &cdc); err != nil {
+	if err = expenseCategories(tx, &cdc); err != nil {
 		return
 	}
 	cdc.Type = fin.IncomeCat
-	if err = incomeCategories(conn, &cdc); err != nil {
+	if err = incomeCategories(tx, &cdc); err != nil {
 		return
 	}
 	adc := categories.AccountDetailConsumer{Builder: &cdsb}
-	if err = fsqlite.ConnNew(conn).Accounts(nil, &adc); err != nil {
+	if err = fsqlite.ConnNew(tx).Accounts(nil, &adc); err != nil {
 		return
 	}
 	cds = cdsb.Build()
@@ -34,7 +34,7 @@ func catDetails(conn *sqlite.Conn) (
 // accountStoreUpdater updates a sqlite database on behalf of a
 // fin.CatDetailStore value.
 type accountStoreUpdater struct {
-	C *sqlite.Conn
+	C *sql.Tx
 }
 
 func (u accountStoreUpdater) Add(name string) (newId int64, err error) {
@@ -75,37 +75,40 @@ func (u accountStoreUpdater) Remove(id int64) error {
 // catDetailStoreUpdater updates a sqlite database on behalf of a
 // fin.CatDetailStore value.
 type catDetailStoreUpdater struct {
-	C *sqlite.Conn
+	C *sql.Tx
 }
 
 func (u catDetailStoreUpdater) Add(t fin.CatType, row *categories.CatDbRow) error {
-	values, err := sqlite_rw.InsertValues((&rawCatDbRow{}).init(row))
+	values, err := sqlite3_rw.InsertValues((&rawCatDbRow{}).init(row))
 	if err != nil {
 		return err
 	}
+	var result sql.Result
 	if t == fin.ExpenseCat {
-		err = u.C.Exec("insert into expense_categories (name, is_active, parent_id) values (?, ?, ?)", values...)
+		result, err = u.C.Exec("insert into expense_categories (name, is_active, parent_id) values (?, ?, ?)", values...)
 	} else if t == fin.IncomeCat {
-		err = u.C.Exec("insert into income_categories (name, is_active, parent_id) values (?, ?, ?)", values...)
+		result, err = u.C.Exec("insert into income_categories (name, is_active, parent_id) values (?, ?, ?)", values...)
 	} else {
 		panic("t must be either ExpenseCat or IncomeCat")
 	}
 	if err != nil {
 		return err
 	}
-	row.Id, err = sqlite_db.LastRowId(u.C)
+	row.Id, err = result.LastInsertId()
 	return err
 }
 
 func (u catDetailStoreUpdater) Update(t fin.CatType, row *categories.CatDbRow) error {
-	values, err := sqlite_rw.UpdateValues((&rawCatDbRow{}).init(row))
+	values, err := sqlite3_rw.UpdateValues((&rawCatDbRow{}).init(row))
 	if err != nil {
 		return err
 	}
 	if t == fin.ExpenseCat {
-		return u.C.Exec("update expense_categories set name = ?, is_active = ?, parent_id = ? where id = ?", values...)
+		_, err := u.C.Exec("update expense_categories set name = ?, is_active = ?, parent_id = ? where id = ?", values...)
+		return err
 	} else if t == fin.IncomeCat {
-		return u.C.Exec("update income_categories set name = ?, is_active = ?, parent_id = ? where id = ?", values...)
+		_, err := u.C.Exec("update income_categories set name = ?, is_active = ?, parent_id = ? where id = ?", values...)
+		return err
 	} else {
 		panic("t must be either ExpenseCat or IncomeCat")
 	}
@@ -113,16 +116,18 @@ func (u catDetailStoreUpdater) Update(t fin.CatType, row *categories.CatDbRow) e
 
 func (u catDetailStoreUpdater) Remove(t fin.CatType, id int64) error {
 	if t == fin.ExpenseCat {
-		return u.C.Exec("update expense_categories set is_active = 0 where id = ?", id)
+		_, err := u.C.Exec("update expense_categories set is_active = 0 where id = ?", id)
+		return err
 	} else if t == fin.IncomeCat {
-		return u.C.Exec("update income_categories set is_active = 0 where id = ?", id)
+		_, err := u.C.Exec("update income_categories set is_active = 0 where id = ?", id)
+		return err
 	}
 	return categories.NeedExpenseIncomeCategory
 }
 
 type rawCatDbRow struct {
 	*categories.CatDbRow
-	sqlite_rw.SimpleRow
+	sqlite3_rw.SimpleRow
 }
 
 func (r *rawCatDbRow) init(bo *categories.CatDbRow) *rawCatDbRow {
@@ -143,18 +148,18 @@ func (r *rawCatDbRow) ValueRead() categories.CatDbRow {
 }
 
 func expenseCategories(
-	conn *sqlite.Conn, consumer consume2.Consumer[categories.CatDbRow]) error {
-	return sqlite_rw.ReadMultiple[categories.CatDbRow](
-		conn,
+	tx *sql.Tx, consumer consume2.Consumer[categories.CatDbRow]) error {
+	return sqlite3_rw.ReadMultiple[categories.CatDbRow](
+		tx,
 		(&rawCatDbRow{}).init(&categories.CatDbRow{}),
 		consumer,
 		"select id, name, is_active, parent_id from expense_categories")
 }
 
 func incomeCategories(
-	conn *sqlite.Conn, consumer consume2.Consumer[categories.CatDbRow]) error {
-	return sqlite_rw.ReadMultiple[categories.CatDbRow](
-		conn,
+	tx *sql.Tx, consumer consume2.Consumer[categories.CatDbRow]) error {
+	return sqlite3_rw.ReadMultiple[categories.CatDbRow](
+		tx,
 		(&rawCatDbRow{}).init(&categories.CatDbRow{}),
 		consumer,
 		"select id, name, is_active, parent_id from income_categories")

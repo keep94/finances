@@ -5,15 +5,16 @@ package fixture
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"testing"
+	"time"
+
 	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/passwords"
-	"reflect"
-	"testing"
-	"time"
 )
 
 var (

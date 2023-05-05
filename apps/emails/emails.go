@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"database/sql"
 	"flag"
 	"fmt"
 	"html/template"
@@ -24,10 +25,10 @@ import (
 	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
-	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/date_util"
-	"github.com/keep94/toolbox/db/sqlite_db"
+	"github.com/keep94/toolbox/db/sqlite3_db"
 	"github.com/keep94/toolbox/google_graph"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -316,11 +317,11 @@ func main() {
 	recipients := toRecipients(fRecipients)
 
 	// fDb
-	conn, err := sqlite.Open(fDb)
+	rawdb, err := sql.Open("sqlite3", fDb)
 	if err != nil {
 		log.Fatal(err)
 	}
-	dbase := sqlite_db.New(conn)
+	dbase := sqlite3_db.New(rawdb)
 	defer dbase.Close()
 	cache := csqlite.New(dbase)
 	store := for_sqlite.New(dbase)

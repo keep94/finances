@@ -1,16 +1,17 @@
 package for_sqlite
 
 import (
+	"database/sql"
+	"sync"
+
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	"github.com/keep94/finances/fin/categories/categoriesdb"
-	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
-	"github.com/keep94/toolbox/db/sqlite_db"
-	"sync"
+	"github.com/keep94/toolbox/db/sqlite3_db"
 )
 
-func New(db *sqlite_db.Db) *Cache {
+func New(db *sqlite3_db.Db) *Cache {
 	return &Cache{db: db}
 }
 
@@ -24,130 +25,128 @@ type catDetailCache struct {
 	valid bool
 }
 
-func (c *catDetailCache) DbGet(db *sqlite_db.Db) (
+func (c *catDetailCache) DbGet(db *sqlite3_db.Db) (
 	cds categories.CatDetailStore, err error) {
 	cds, ok := c.getFromCache()
 	if ok {
 		return
 	}
-	err = db.Do(func(conn *sqlite.Conn) (err error) {
-		cds, err = c.load(conn)
+	err = db.Do(func(tx *sql.Tx) (err error) {
+		cds, err = c.load(tx)
 		return
 	})
 	return
 }
 
-func (c *catDetailCache) Get(conn *sqlite.Conn) (
+func (c *catDetailCache) Get(tx *sql.Tx) (
 	cds categories.CatDetailStore, err error) {
 	cds, ok := c.getFromCache()
 	if ok {
 		return
 	}
-	return c.load(conn)
+	return c.load(tx)
 }
 
-func (c *catDetailCache) Invalidate(conn *sqlite.Conn) error {
+func (c *catDetailCache) Invalidate(tx *sql.Tx) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	c.valid = false
 	return nil
 }
 
-func (c *catDetailCache) AccountAdd(conn *sqlite.Conn, name string) (
+func (c *catDetailCache) AccountAdd(tx *sql.Tx, name string) (
 	cds categories.CatDetailStore, newId int64, err error) {
-	if cds, err = catDetails(conn); err != nil {
+	if cds, err = catDetails(tx); err != nil {
 		cds, _ = c.getFromCache()
 		return
 	}
-	cds, newId, err = cds.AccountAdd(name, accountStoreUpdater{conn})
+	cds, newId, err = cds.AccountAdd(name, accountStoreUpdater{tx})
 	c.save(cds)
 	return
 }
 
 func (c *catDetailCache) AccountRename(
-	conn *sqlite.Conn, id int64, name string) (
+	tx *sql.Tx, id int64, name string) (
 	cds categories.CatDetailStore, err error) {
-	if cds, err = catDetails(conn); err != nil {
+	if cds, err = catDetails(tx); err != nil {
 		cds, _ = c.getFromCache()
 		return
 	}
-	cds, err = cds.AccountRename(id, name, accountStoreUpdater{conn})
+	cds, err = cds.AccountRename(id, name, accountStoreUpdater{tx})
 	c.save(cds)
 	return
 }
 
 func (c *catDetailCache) AccountRemove(
-	conn *sqlite.Conn, id int64) (
+	tx *sql.Tx, id int64) (
 	cds categories.CatDetailStore, err error) {
-	if cds, err = catDetails(conn); err != nil {
+	if cds, err = catDetails(tx); err != nil {
 		cds, _ = c.getFromCache()
 		return
 	}
-	cds, err = cds.AccountRemove(id, accountStoreUpdater{conn})
+	cds, err = cds.AccountRemove(id, accountStoreUpdater{tx})
 	c.save(cds)
 	return
 }
 
-func (c *catDetailCache) Add(conn *sqlite.Conn, name string) (
+func (c *catDetailCache) Add(tx *sql.Tx, name string) (
 	cds categories.CatDetailStore, newId fin.Cat, err error) {
-	if cds, err = catDetails(conn); err != nil {
+	if cds, err = catDetails(tx); err != nil {
 		cds, _ = c.getFromCache()
 		return
 	}
-	cds, newId, err = cds.Add(name, catDetailStoreUpdater{conn})
+	cds, newId, err = cds.Add(name, catDetailStoreUpdater{tx})
 	c.save(cds)
 	return
 }
 
-func (c *catDetailCache) Remove(conn *sqlite.Conn, id fin.Cat) (
+func (c *catDetailCache) Remove(tx *sql.Tx, id fin.Cat) (
 	cds categories.CatDetailStore, err error) {
-	if cds, err = catDetails(conn); err != nil {
+	if cds, err = catDetails(tx); err != nil {
 		cds, _ = c.getFromCache()
 		return
 	}
-	cds, err = cds.Remove(id, catDetailStoreUpdater{conn})
+	cds, err = cds.Remove(id, catDetailStoreUpdater{tx})
 	c.save(cds)
 	return
 }
 
-func (c *catDetailCache) Purge(conn *sqlite.Conn, cats fin.CatSet) error {
-	expenseStmt, err := conn.Prepare("delete from expense_categories where id = ?")
+func (c *catDetailCache) Purge(tx *sql.Tx, cats fin.CatSet) error {
+	expenseStmt, err := tx.Prepare("delete from expense_categories where id = ?")
 	if err != nil {
 		return err
 	}
-	defer expenseStmt.Finalize()
-	incomeStmt, err := conn.Prepare("delete from income_categories where id = ?")
+	defer expenseStmt.Close()
+	incomeStmt, err := tx.Prepare("delete from income_categories where id = ?")
 	if err != nil {
 		return err
 	}
-	defer incomeStmt.Finalize()
+	defer incomeStmt.Close()
 	for cat, ok := range cats {
 		if ok {
 			if cat.Type == fin.ExpenseCat {
-				if err := expenseStmt.Exec(cat.Id); err != nil {
+				if _, err := expenseStmt.Exec(cat.Id); err != nil {
 					return err
 				}
-				expenseStmt.Next()
 			} else if cat.Type == fin.IncomeCat {
-				if err := incomeStmt.Exec(cat.Id); err != nil {
+				if _, err := incomeStmt.Exec(cat.Id); err != nil {
 					return err
 				}
-				incomeStmt.Next()
 			} else {
 				return categories.NeedExpenseIncomeCategory
 			}
 		}
 	}
-	return c.Invalidate(conn)
+	return c.Invalidate(tx)
 }
 
-func (c *catDetailCache) Rename(conn *sqlite.Conn, id fin.Cat, newName string) (
+func (c *catDetailCache) Rename(tx *sql.Tx, id fin.Cat, newName string) (
 	cds categories.CatDetailStore, err error) {
-	if cds, err = catDetails(conn); err != nil {
+	if cds, err = catDetails(tx); err != nil {
 		cds, _ = c.getFromCache()
 		return
 	}
-	cds, err = cds.Rename(id, newName, catDetailStoreUpdater{conn})
+	cds, err = cds.Rename(id, newName, catDetailStoreUpdater{tx})
 	c.save(cds)
 	return
 }
@@ -159,9 +158,9 @@ func (c *catDetailCache) save(cds categories.CatDetailStore) {
 	c.valid = true
 }
 
-func (c *catDetailCache) load(conn *sqlite.Conn) (
+func (c *catDetailCache) load(tx *sql.Tx) (
 	cds categories.CatDetailStore, err error) {
-	if cds, err = catDetails(conn); err != nil {
+	if cds, err = catDetails(tx); err != nil {
 		return
 	}
 	c.save(cds)
@@ -178,14 +177,14 @@ func (c *catDetailCache) getFromCache() (cds categories.CatDetailStore, ok bool)
 }
 
 type Cache struct {
-	db *sqlite_db.Db
+	db *sqlite3_db.Db
 	c  catDetailCache
 }
 
 func (c *Cache) AccountAdd(t db.Transaction, name string) (
 	cds categories.CatDetailStore, newId int64, err error) {
-	err = sqlite_db.ToDoer(c.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		cds, newId, err = c.c.AccountAdd(conn, name)
+	err = sqlite3_db.ToDoer(c.db, t).Do(func(tx *sql.Tx) (err error) {
+		cds, newId, err = c.c.AccountAdd(tx, name)
 		return
 	})
 	return
@@ -193,8 +192,8 @@ func (c *Cache) AccountAdd(t db.Transaction, name string) (
 
 func (c *Cache) AccountRename(t db.Transaction, id int64, name string) (
 	cds categories.CatDetailStore, err error) {
-	err = sqlite_db.ToDoer(c.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		cds, err = c.c.AccountRename(conn, id, name)
+	err = sqlite3_db.ToDoer(c.db, t).Do(func(tx *sql.Tx) (err error) {
+		cds, err = c.c.AccountRename(tx, id, name)
 		return
 	})
 	return
@@ -202,8 +201,8 @@ func (c *Cache) AccountRename(t db.Transaction, id int64, name string) (
 
 func (c *Cache) AccountRemove(t db.Transaction, id int64) (
 	cds categories.CatDetailStore, err error) {
-	err = sqlite_db.ToDoer(c.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		cds, err = c.c.AccountRemove(conn, id)
+	err = sqlite3_db.ToDoer(c.db, t).Do(func(tx *sql.Tx) (err error) {
+		cds, err = c.c.AccountRemove(tx, id)
 		return
 	})
 	return
@@ -211,8 +210,8 @@ func (c *Cache) AccountRemove(t db.Transaction, id int64) (
 
 func (c *Cache) Add(t db.Transaction, name string) (
 	cds categories.CatDetailStore, newId fin.Cat, err error) {
-	err = sqlite_db.ToDoer(c.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		cds, newId, err = c.c.Add(conn, name)
+	err = sqlite3_db.ToDoer(c.db, t).Do(func(tx *sql.Tx) (err error) {
+		cds, newId, err = c.c.Add(tx, name)
 		return
 	})
 	return
@@ -221,8 +220,8 @@ func (c *Cache) Add(t db.Transaction, name string) (
 func (c *Cache) Get(t db.Transaction) (
 	cds categories.CatDetailStore, err error) {
 	if t != nil {
-		err = sqlite_db.ToDoer(c.db, t).Do(func(conn *sqlite.Conn) (err error) {
-			cds, err = c.c.Get(conn)
+		err = sqlite3_db.ToDoer(c.db, t).Do(func(tx *sql.Tx) (err error) {
+			cds, err = c.c.Get(tx)
 			return
 		})
 		return
@@ -231,30 +230,30 @@ func (c *Cache) Get(t db.Transaction) (
 }
 
 func (c *Cache) Invalidate(t db.Transaction) error {
-	return sqlite_db.ToDoer(c.db, t).Do(func(conn *sqlite.Conn) error {
-		return c.c.Invalidate(conn)
+	return sqlite3_db.ToDoer(c.db, t).Do(func(tx *sql.Tx) error {
+		return c.c.Invalidate(tx)
 	})
 }
 
 func (c *Cache) Remove(t db.Transaction, id fin.Cat) (
 	cds categories.CatDetailStore, err error) {
-	err = sqlite_db.ToDoer(c.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		cds, err = c.c.Remove(conn, id)
+	err = sqlite3_db.ToDoer(c.db, t).Do(func(tx *sql.Tx) (err error) {
+		cds, err = c.c.Remove(tx, id)
 		return
 	})
 	return
 }
 
 func (c *Cache) Purge(t db.Transaction, cats fin.CatSet) error {
-	return sqlite_db.ToDoer(c.db, t).Do(func(conn *sqlite.Conn) error {
-		return c.c.Purge(conn, cats)
+	return sqlite3_db.ToDoer(c.db, t).Do(func(tx *sql.Tx) error {
+		return c.c.Purge(tx, cats)
 	})
 }
 
 func (c *Cache) Rename(t db.Transaction, id fin.Cat, newName string) (
 	cds categories.CatDetailStore, err error) {
-	err = sqlite_db.ToDoer(c.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		cds, err = c.c.Rename(conn, id, newName)
+	err = sqlite3_db.ToDoer(c.db, t).Do(func(tx *sql.Tx) (err error) {
+		cds, err = c.c.Rename(tx, id, newName)
 		return
 	})
 	return

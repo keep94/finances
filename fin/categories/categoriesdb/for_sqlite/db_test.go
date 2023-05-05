@@ -1,15 +1,17 @@
 package for_sqlite
 
 import (
+	"database/sql"
+	"testing"
+
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	"github.com/keep94/finances/fin/categories/categoriesdb/fixture"
 	fsqlite "github.com/keep94/finances/fin/findb/for_sqlite"
 	"github.com/keep94/finances/fin/findb/sqlite_setup"
-	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
-	"github.com/keep94/toolbox/db/sqlite_db"
-	"testing"
+	"github.com/keep94/toolbox/db/sqlite3_db"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func TestCatDetails(t *testing.T) {
@@ -192,21 +194,21 @@ func TestCachePurge(t *testing.T) {
 	newFixture(db).CachePurge(t, New(db))
 }
 
-func newFixture(db *sqlite_db.Db) *fixture.Fixture {
+func newFixture(db *sqlite3_db.Db) *fixture.Fixture {
 	return &fixture.Fixture{
 		Store: fsqlite.New(db),
-		Doer:  sqlite_db.NewDoer(db),
+		Doer:  sqlite3_db.NewDoer(db),
 		Db:    dbstubb{db}}
 }
 
 type dbstubb struct {
-	db *sqlite_db.Db
+	db *sqlite3_db.Db
 }
 
 func (d dbstubb) Read(t db.Transaction) (
 	cds categories.CatDetailStore, err error) {
-	err = sqlite_db.ToDoer(d.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		cds, err = catDetails(conn)
+	err = sqlite3_db.ToDoer(d.db, t).Do(func(tx *sql.Tx) (err error) {
+		cds, err = catDetails(tx)
 		return
 	})
 	return
@@ -215,8 +217,8 @@ func (d dbstubb) Read(t db.Transaction) (
 func (d dbstubb) Add(
 	t db.Transaction, cds categories.CatDetailStore, name string) (
 	newStore categories.CatDetailStore, newId fin.Cat, err error) {
-	err = sqlite_db.ToDoer(d.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		newStore, newId, err = cds.Add(name, catDetailStoreUpdater{C: conn})
+	err = sqlite3_db.ToDoer(d.db, t).Do(func(tx *sql.Tx) (err error) {
+		newStore, newId, err = cds.Add(name, catDetailStoreUpdater{C: tx})
 		return
 	})
 	return
@@ -225,8 +227,8 @@ func (d dbstubb) Add(
 func (d dbstubb) Rename(
 	t db.Transaction, cds categories.CatDetailStore, id fin.Cat, name string) (
 	newStore categories.CatDetailStore, err error) {
-	err = sqlite_db.ToDoer(d.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		newStore, err = cds.Rename(id, name, catDetailStoreUpdater{C: conn})
+	err = sqlite3_db.ToDoer(d.db, t).Do(func(tx *sql.Tx) (err error) {
+		newStore, err = cds.Rename(id, name, catDetailStoreUpdater{C: tx})
 		return
 	})
 	return
@@ -235,29 +237,27 @@ func (d dbstubb) Rename(
 func (d dbstubb) Remove(
 	t db.Transaction, cds categories.CatDetailStore, id fin.Cat) (
 	newStore categories.CatDetailStore, err error) {
-	err = sqlite_db.ToDoer(d.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		newStore, err = cds.Remove(id, catDetailStoreUpdater{C: conn})
+	err = sqlite3_db.ToDoer(d.db, t).Do(func(tx *sql.Tx) (err error) {
+		newStore, err = cds.Remove(id, catDetailStoreUpdater{C: tx})
 		return
 	})
 	return
 }
 
-func openDb(t *testing.T) *sqlite_db.Db {
-	conn, err := sqlite.Open(":memory:")
+func openDb(t *testing.T) *sqlite3_db.Db {
+	rawdb, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatalf("Error opening database: %v", err)
 	}
-	dbase := sqlite_db.New(conn)
-	err = dbase.Do(func(conn *sqlite.Conn) error {
-		return sqlite_setup.SetUpTables(conn)
-	})
+	dbase := sqlite3_db.New(rawdb)
+	err = dbase.Do(sqlite_setup.SetUpTables)
 	if err != nil {
 		t.Fatalf("Error creating tables: %v", err)
 	}
 	return dbase
 }
 
-func closeDb(t *testing.T, db *sqlite_db.Db) {
+func closeDb(t *testing.T, db *sqlite3_db.Db) {
 	if err := db.Close(); err != nil {
 		t.Errorf("Error closing database: %v", err)
 	}

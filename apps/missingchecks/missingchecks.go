@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -13,9 +14,9 @@ import (
 	"github.com/keep94/finances/fin/checks"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
-	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
-	"github.com/keep94/toolbox/db/sqlite_db"
+	"github.com/keep94/toolbox/db/sqlite3_db"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
@@ -32,13 +33,13 @@ func main() {
 	}
 
 	// fDb
-	conn, err := sqlite.Open(fDb)
+	rawdb, err := sql.Open("sqlite3", fDb)
 	if err != nil {
 		log.Fatal(err)
 	}
-	dbase := sqlite_db.New(conn)
+	dbase := sqlite3_db.New(rawdb)
 	defer dbase.Close()
-	doer := sqlite_db.NewDoer(dbase)
+	doer := sqlite3_db.NewDoer(dbase)
 	cache := csqlite.New(dbase)
 	store := for_sqlite.New(dbase)
 	cds, _ := cache.Get(nil)

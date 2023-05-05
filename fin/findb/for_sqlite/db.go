@@ -2,19 +2,20 @@
 package for_sqlite
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/keep94/consume2"
-	"github.com/keep94/finances/fin"
-	"github.com/keep94/finances/fin/findb"
-	"github.com/keep94/gosqlite/sqlite"
-	"github.com/keep94/toolbox/db"
-	"github.com/keep94/toolbox/db/sqlite_db"
-	"github.com/keep94/toolbox/db/sqlite_rw"
-	"github.com/keep94/toolbox/passwords"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/keep94/consume2"
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/finances/fin/findb"
+	"github.com/keep94/toolbox/db"
+	"github.com/keep94/toolbox/db/sqlite3_db"
+	"github.com/keep94/toolbox/db/sqlite3_rw"
+	"github.com/keep94/toolbox/passwords"
 )
 
 const (
@@ -45,19 +46,19 @@ const (
 	kSQLUpdateUser               = "update users set name = ?, go_password = ?, permission = ?, last_login = ? where id = ?"
 )
 
-func New(db *sqlite_db.Db) Store {
+func New(db *sqlite3_db.Db) Store {
 	return Store{db}
 }
 
-func ConnNew(conn *sqlite.Conn) Store {
-	return Store{sqlite_db.NewSqliteDoer(conn)}
+func ConnNew(tx *sql.Tx) Store {
+	return Store{sqlite3_db.NewSqlite3Doer(tx)}
 }
 
 func ReadOnlyWrapper(store Store) ReadOnlyStore {
 	return ReadOnlyStore{store: store}
 }
 
-func entries(conn *sqlite.Conn, options *findb.EntryListOptions, consumer consume2.Consumer[fin.Entry]) error {
+func entries(tx *sql.Tx, options *findb.EntryListOptions, consumer consume2.Consumer[fin.Entry]) error {
 	var sql string
 	if options != nil {
 		where_clauses := make([]string, 3)
@@ -82,92 +83,84 @@ func entries(conn *sqlite.Conn, options *findb.EntryListOptions, consumer consum
 	} else {
 		sql = kSQLEntriesPrefix + kSQLEntryOrderBy
 	}
-	stmt, err := conn.Prepare(sql)
+	sql_params := make([]interface{}, 0, 2)
+	if options != nil {
+		if options.Start != nil {
+			sql_params = append(
+				sql_params, sqlite3_db.DateToString(*options.Start))
+		}
+		if options.End != nil {
+			sql_params = append(
+				sql_params, sqlite3_db.DateToString(*options.End))
+		}
+	}
+	dbrows, err := tx.Query(sql, sql_params...)
 	if err != nil {
 		return err
 	}
-	defer stmt.Finalize()
-	if options != nil && (options.Start != nil || options.End != nil) {
-		sql_params := make([]interface{}, 2)
-		sql_param_count := 0
-		if options.Start != nil {
-			sql_params[sql_param_count] = sqlite_db.DateToString(*options.Start)
-			sql_param_count++
-		}
-		if options.End != nil {
-			sql_params[sql_param_count] = sqlite_db.DateToString(*options.End)
-			sql_param_count++
-		}
-		err = stmt.Exec(sql_params[:sql_param_count]...)
-		if err != nil {
-			return err
-		}
-	}
+	defer dbrows.Close()
 	if options != nil && options.Unreviewed {
-		return sqlite_rw.ReadRowsWithEtag[fin.Entry](
+		return sqlite3_rw.ReadRowsWithEtag[fin.Entry](
 			(&rawEntry{}).init(&fin.Entry{}),
-			stmt,
+			dbrows,
 			consumer)
 	}
-	return sqlite_rw.ReadRows[fin.Entry](
+	return sqlite3_rw.ReadRows[fin.Entry](
 		(&rawEntry{}).init(&fin.Entry{}),
-		stmt,
+		dbrows,
 		consumer)
 }
 
-func entryById(conn *sqlite.Conn, id int64, entry *fin.Entry) error {
-	stmt, err := conn.Prepare(kSQLEntryById)
+func entryById(tx *sql.Tx, id int64, entry *fin.Entry) error {
+	stmt, err := tx.Prepare(kSQLEntryById)
 	if err != nil {
 		return err
 	}
-	defer stmt.Finalize()
+	defer stmt.Close()
 	return _entryById(stmt, (&rawEntry{}).init(entry), id)
 }
 
-func _entryById(stmt *sqlite.Stmt, r *rawEntry, id int64) error {
-	if err := stmt.Exec(id); err != nil {
+func _entryById(stmt *sql.Stmt, r *rawEntry, id int64) error {
+	dbrows, err := stmt.Query(id)
+	if err != nil {
 		return err
 	}
-	return sqlite_rw.FirstOnly(r, stmt, findb.NoSuchId)
+	defer dbrows.Close()
+	return sqlite3_rw.FirstOnly(r, dbrows, findb.NoSuchId)
 }
 
-func doEntryChanges(conn *sqlite.Conn, changes *findb.EntryChanges) error {
+func doEntryChanges(tx *sql.Tx, changes *findb.EntryChanges) error {
 	row := (&rawEntry{}).init(&fin.Entry{})
 	var err error
 	var deltas fin.AccountDeltas = make(map[int64]*fin.AccountDelta)
-	var lastRowIdStmt, getStmt, addStmt, deleteStmt, updateStmt *sqlite.Stmt
+	var getStmt, addStmt, deleteStmt, updateStmt *sql.Stmt
 	if len(changes.Updates) > 0 || len(changes.Deletes) > 0 {
-		getStmt, err = conn.Prepare(kSQLEntryById)
+		getStmt, err = tx.Prepare(kSQLEntryById)
 		if err != nil {
 			return err
 		}
-		defer getStmt.Finalize()
+		defer getStmt.Close()
 	}
 	if len(changes.Adds) > 0 {
-		addStmt, err = conn.Prepare(kSQLInsertEntry)
+		addStmt, err = tx.Prepare(kSQLInsertEntry)
 		if err != nil {
 			return err
 		}
-		defer addStmt.Finalize()
-		lastRowIdStmt, err = conn.Prepare(sqlite_db.LastRowIdSQL)
-		if err != nil {
-			return err
-		}
-		defer lastRowIdStmt.Finalize()
+		defer addStmt.Close()
 	}
 	if len(changes.Deletes) > 0 {
-		deleteStmt, err = conn.Prepare(kSQLDeleteEntryById)
+		deleteStmt, err = tx.Prepare(kSQLDeleteEntryById)
 		if err != nil {
 			return err
 		}
-		defer deleteStmt.Finalize()
+		defer deleteStmt.Close()
 	}
 	if len(changes.Updates) > 0 {
-		updateStmt, err = conn.Prepare(kSQLUpdateEntry)
+		updateStmt, err = tx.Prepare(kSQLUpdateEntry)
 		if err != nil {
 			return err
 		}
-		defer updateStmt.Finalize()
+		defer updateStmt.Close()
 	}
 	for _, id := range changes.Deletes {
 		err = _entryById(getStmt, row, id)
@@ -178,11 +171,10 @@ func doEntryChanges(conn *sqlite.Conn, changes *findb.EntryChanges) error {
 			return err
 		}
 		deltas.Exclude(&row.CatPayment)
-		err = deleteStmt.Exec(id)
+		_, err = deleteStmt.Exec(id)
 		if err != nil {
 			return err
 		}
-		deleteStmt.Next()
 	}
 	for id, update := range changes.Updates {
 		err = _entryById(getStmt, row, id)
@@ -213,56 +205,55 @@ func doEntryChanges(conn *sqlite.Conn, changes *findb.EntryChanges) error {
 		deltas.Include(&row.CatPayment)
 		row.Entry.Id = id
 		var updateValues []interface{}
-		if updateValues, err = sqlite_rw.UpdateValues(row); err != nil {
+		if updateValues, err = sqlite3_rw.UpdateValues(row); err != nil {
 			return err
 		}
-		err = updateStmt.Exec(updateValues...)
+		_, err = updateStmt.Exec(updateValues...)
 		if err != nil {
 			return err
 		}
-		updateStmt.Next()
 	}
 	for _, entry := range changes.Adds {
 		row.init(entry)
 		deltas.Include(&entry.CatPayment)
-		err = addEntry(addStmt, lastRowIdStmt, row)
+		err = addEntry(addStmt, row)
 		if err != nil {
 			return err
 		}
 	}
-	return recordAccountDeltas(conn, deltas)
+	return recordAccountDeltas(tx, deltas)
 }
 
-func activeAccounts(conn *sqlite.Conn) (accounts []*fin.Account, err error) {
-	err = sqlite_rw.ReadMultiple[fin.Account](
-		conn,
+func activeAccounts(tx *sql.Tx) (accounts []*fin.Account, err error) {
+	err = sqlite3_rw.ReadMultiple[fin.Account](
+		tx,
 		(&rawAccount{}).init(&fin.Account{}),
 		consume2.AppendPtrsTo(&accounts),
 		kSQLActiveAccounts)
 	return
 }
 
-func updateAccountImportSD(conn *sqlite.Conn, acctId int64, date time.Time) error {
-	return conn.Exec(kSQLUpdateAccountImportSD, sqlite_db.DateToString(date), acctId)
-}
-
-func addEntry(stmt, lastRowIdStmt *sqlite.Stmt, r *rawEntry) error {
-	values, err := sqlite_rw.InsertValues(r)
-	if err != nil {
-		return err
-	}
-	err = stmt.Exec(values...)
-	if err != nil {
-		return err
-	}
-	stmt.Next()
-	r.Id, err = sqlite_db.LastRowIdFromStmt(lastRowIdStmt)
+func updateAccountImportSD(tx *sql.Tx, acctId int64, date time.Time) error {
+	_, err := tx.Exec(kSQLUpdateAccountImportSD, sqlite3_db.DateToString(date), acctId)
 	return err
 }
 
-func recordAccountDeltas(conn *sqlite.Conn, deltas fin.AccountDeltas) error {
+func addEntry(stmt *sql.Stmt, r *rawEntry) error {
+	values, err := sqlite3_rw.InsertValues(r)
+	if err != nil {
+		return err
+	}
+	result, err := stmt.Exec(values...)
+	if err != nil {
+		return err
+	}
+	r.Id, err = result.LastInsertId()
+	return err
+}
+
+func recordAccountDeltas(tx *sql.Tx, deltas fin.AccountDeltas) error {
 	for id, delta := range deltas {
-		err := conn.Exec("update accounts set balance = balance + ?, reconciled = reconciled + ?, b_count = b_count + ?, r_count = r_count + ? where id = ?", delta.Balance, delta.RBalance, delta.Count, delta.RCount, id)
+		_, err := tx.Exec("update accounts set balance = balance + ?, reconciled = reconciled + ?, b_count = b_count + ?, r_count = r_count + ? where id = ?", delta.Balance, delta.RBalance, delta.Count, delta.RCount, id)
 		if err != nil {
 			return err
 		}
@@ -301,7 +292,7 @@ func (r *rawEntry) ValueRead() fin.Entry {
 
 func (r *rawEntry) Unmarshall() error {
 	var err error
-	if r.Entry.Date, err = sqlite_db.StringToDate(r.dateStr); err != nil {
+	if r.Entry.Date, err = sqlite3_db.StringToDate(r.dateStr); err != nil {
 		return err
 	}
 	r.Status = fin.ReviewStatus(r.status)
@@ -309,7 +300,7 @@ func (r *rawEntry) Unmarshall() error {
 }
 
 func (r *rawEntry) Marshall() error {
-	r.dateStr = sqlite_db.DateToString(r.Date)
+	r.dateStr = sqlite3_db.DateToString(r.Date)
 	r.status = int(r.Status)
 	r.Entry.Marshall(marshall, r)
 	return nil
@@ -385,12 +376,12 @@ func (r *rawAccount) ValueRead() fin.Account {
 }
 
 func (r *rawAccount) Unmarshall() error {
-	r.Account.ImportSD, _ = sqlite_db.StringToDate(r.importSDStr)
+	r.Account.ImportSD, _ = sqlite3_db.StringToDate(r.importSDStr)
 	return nil
 }
 
 func (r *rawAccount) Marshall() error {
-	r.importSDStr = sqlite_db.DateToString(r.ImportSD)
+	r.importSDStr = sqlite3_db.DateToString(r.ImportSD)
 	return nil
 }
 
@@ -522,14 +513,14 @@ func marshall(cr []fin.CatRec, id int64, reconciled bool, ptr interface{}) {
 }
 
 type Store struct {
-	db sqlite_db.Doer
+	db sqlite3_db.Doer
 }
 
 func (s Store) AccountById(
 	t db.Transaction, acctId int64, account *fin.Account) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadSingle(
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadSingle(
+			tx,
 			(&rawAccount{}).init(account),
 			findb.NoSuchId,
 			kSQLAccountById,
@@ -539,9 +530,9 @@ func (s Store) AccountById(
 
 func (s Store) Accounts(
 	t db.Transaction, consumer consume2.Consumer[fin.Account]) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple[fin.Account](
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadMultiple[fin.Account](
+			tx,
 			(&rawAccount{}).init(&fin.Account{}),
 			consumer,
 			kSQLAccounts)
@@ -550,24 +541,24 @@ func (s Store) Accounts(
 
 func (s Store) ActiveAccounts(t db.Transaction) (
 	accounts []*fin.Account, err error) {
-	err = sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) (err error) {
-		accounts, err = activeAccounts(conn)
+	err = sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) (err error) {
+		accounts, err = activeAccounts(tx)
 		return
 	})
 	return
 }
 
 func (s Store) AddAccount(t db.Transaction, account *fin.Account) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.AddRow(
-			conn, (&rawAccount{}).init(account), &account.Id, kSQLInsertAccount)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.AddRow(
+			tx, (&rawAccount{}).init(account), &account.Id, kSQLInsertAccount)
 	})
 }
 
 func (s Store) DoEntryChanges(
 	t db.Transaction, changes *findb.EntryChanges) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return doEntryChanges(conn, changes)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return doEntryChanges(tx, changes)
 	})
 }
 
@@ -575,65 +566,67 @@ func (s Store) Entries(
 	t db.Transaction,
 	options *findb.EntryListOptions,
 	consumer consume2.Consumer[fin.Entry]) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return entries(conn, options, consumer)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return entries(tx, options, consumer)
 	})
 }
 
 func (s Store) EntryById(
 	t db.Transaction, id int64, entry *fin.Entry) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return entryById(conn, id, entry)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return entryById(tx, id, entry)
 	})
 }
 
 func (s Store) UpdateAccountImportSD(
 	t db.Transaction, acctId int64, date time.Time) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return updateAccountImportSD(conn, acctId, date)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return updateAccountImportSD(tx, acctId, date)
 	})
 }
 
 func (s Store) UpdateAccount(
 	t db.Transaction, account *fin.Account) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.UpdateRow(
-			conn, (&rawAccount{}).init(account), kSQLUpdateAccount)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.UpdateRow(
+			tx, (&rawAccount{}).init(account), kSQLUpdateAccount)
 	})
 }
 
 func (s Store) RemoveAccount(
 	t db.Transaction, id int64) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return conn.Exec(kSQLRemoveAccount, id)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		_, err := tx.Exec(kSQLRemoveAccount, id)
+		return err
 	})
 }
 
 func (s Store) AddUser(t db.Transaction, user *fin.User) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.AddRow(
-			conn, (&rawUser{}).init(user), &user.Id, kSQLInsertUser)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.AddRow(
+			tx, (&rawUser{}).init(user), &user.Id, kSQLInsertUser)
 	})
 }
 
 func (s Store) RemoveUserByName(t db.Transaction, name string) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return conn.Exec(kSQLRemoveUserByName, name)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		_, err := tx.Exec(kSQLRemoveUserByName, name)
+		return err
 	})
 }
 
 func (s Store) UpdateUser(t db.Transaction, user *fin.User) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.UpdateRow(
-			conn, (&rawUser{}).init(user), kSQLUpdateUser)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.UpdateRow(
+			tx, (&rawUser{}).init(user), kSQLUpdateUser)
 	})
 }
 
 func (s Store) UserById(
 	t db.Transaction, id int64, user *fin.User) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadSingle(
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadSingle(
+			tx,
 			(&rawUser{}).init(user),
 			findb.NoSuchId,
 			kSQLUserById,
@@ -643,9 +636,9 @@ func (s Store) UserById(
 
 func (s Store) UserByName(
 	t db.Transaction, name string, user *fin.User) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadSingle(
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadSingle(
+			tx,
 			(&rawUser{}).init(user),
 			findb.NoSuchId,
 			kSQLUserByName,
@@ -655,9 +648,9 @@ func (s Store) UserByName(
 
 func (s Store) Users(
 	t db.Transaction, consumer consume2.Consumer[fin.User]) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple[fin.User](
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadMultiple[fin.User](
+			tx,
 			(&rawUser{}).init(&fin.User{}),
 			consumer,
 			kSQLUsers)
@@ -666,9 +659,9 @@ func (s Store) Users(
 
 func (s Store) AddRecurringEntry(
 	t db.Transaction, entry *fin.RecurringEntry) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.AddRow(
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.AddRow(
+			tx,
 			(&rawRecurringEntry{}).init(entry),
 			&entry.Id,
 			kSQLInsertRecurringEntry)
@@ -677,17 +670,17 @@ func (s Store) AddRecurringEntry(
 
 func (s Store) UpdateRecurringEntry(
 	t db.Transaction, entry *fin.RecurringEntry) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.UpdateRow(
-			conn, (&rawRecurringEntry{}).init(entry), kSQLUpdateRecurringEntry)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.UpdateRow(
+			tx, (&rawRecurringEntry{}).init(entry), kSQLUpdateRecurringEntry)
 	})
 }
 
 func (s Store) RecurringEntryById(
 	t db.Transaction, id int64, entry *fin.RecurringEntry) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadSingle(
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadSingle(
+			tx,
 			(&rawRecurringEntry{}).init(entry),
 			findb.NoSuchId,
 			kSQLRecurringEntryById,
@@ -697,9 +690,9 @@ func (s Store) RecurringEntryById(
 
 func (s Store) RecurringEntries(
 	t db.Transaction, consumer consume2.Consumer[fin.RecurringEntry]) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return sqlite_rw.ReadMultiple[fin.RecurringEntry](
-			conn,
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		return sqlite3_rw.ReadMultiple[fin.RecurringEntry](
+			tx,
 			(&rawRecurringEntry{}).init(&fin.RecurringEntry{}),
 			consumer,
 			kSQLRecurringEntries)
@@ -707,8 +700,9 @@ func (s Store) RecurringEntries(
 }
 
 func (s Store) RemoveRecurringEntryById(t db.Transaction, id int64) error {
-	return sqlite_db.ToDoer(s.db, t).Do(func(conn *sqlite.Conn) error {
-		return conn.Exec(kSQLDeleteRecurringEntryById, id)
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		_, err := tx.Exec(kSQLDeleteRecurringEntryById, id)
+		return err
 	})
 }
 

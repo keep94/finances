@@ -2,9 +2,14 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+
 	"github.com/keep94/context"
 	"github.com/keep94/finances/apps/ledger/ac"
 	"github.com/keep94/finances/apps/ledger/account"
@@ -33,20 +38,17 @@ import (
 	qfxsqlite "github.com/keep94/finances/fin/autoimport/qfx/qfxdb/for_sqlite"
 	csqlite "github.com/keep94/finances/fin/categories/categoriesdb/for_sqlite"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
-	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/ramstore"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db"
-	"github.com/keep94/toolbox/db/sqlite_db"
+	"github.com/keep94/toolbox/db/sqlite3_db"
 	"github.com/keep94/toolbox/http_util"
 	"github.com/keep94/toolbox/lockout"
 	"github.com/keep94/toolbox/logging"
 	"github.com/keep94/toolbox/mailer"
 	"github.com/keep94/weblogs"
+	_ "github.com/mattn/go-sqlite3"
 	"gopkg.in/yaml.v2"
-	"log"
-	"net/http"
-	"os"
 )
 
 const (
@@ -287,13 +289,13 @@ func init() {
 }
 
 func setupDb(filepath string) {
-	conn, err := sqlite.Open(filepath)
+	rawdb, err := sql.Open("sqlite3", filepath)
 	if err != nil {
 		panic(err.Error())
 	}
-	dbase := sqlite_db.New(conn)
+	dbase := sqlite3_db.New(rawdb)
 	qfxdata := qfxsqlite.New(dbase)
-	kDoer = sqlite_db.NewDoer(dbase)
+	kDoer = sqlite3_db.NewDoer(dbase)
 	kCatDetailCache = csqlite.New(dbase)
 	kStore = for_sqlite.New(dbase)
 	qfxLoader := qfx.QFXLoader{Store: qfxdata}

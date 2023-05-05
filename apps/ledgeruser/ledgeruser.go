@@ -1,19 +1,21 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/keep94/consume2"
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
 	"github.com/keep94/finances/fin/findb/sqlite_setup"
-	"github.com/keep94/gosqlite/sqlite"
 	"github.com/keep94/toolbox/db"
-	"github.com/keep94/toolbox/db/sqlite_db"
+	"github.com/keep94/toolbox/db/sqlite3_db"
 	"github.com/keep94/toolbox/passwords"
-	"os"
-	"strings"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -192,25 +194,23 @@ func doRemove(args []string) bool {
 	return true
 }
 
-func openDb(dbPath string) *sqlite_db.Db {
-	conn, err := sqlite.Open(dbPath)
+func openDb(dbPath string) *sqlite3_db.Db {
+	rawdb, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		fmt.Printf("Unable to open database - %s\n", dbPath)
 		os.Exit(1)
 	}
-	return sqlite_db.New(conn)
+	return sqlite3_db.New(rawdb)
 }
 
-func initDb(dbase *sqlite_db.Db) (
+func initDb(dbase *sqlite3_db.Db) (
 	store for_sqlite.Store, doer db.Doer, ok bool) {
-	err := dbase.Do(func(conn *sqlite.Conn) error {
-		return sqlite_setup.SetUpTables(conn)
-	})
+	err := dbase.Do(sqlite_setup.SetUpTables)
 	if err != nil {
 		fmt.Printf("Unable to create tables - %v\n", err)
 		return
 	}
-	return for_sqlite.New(dbase), sqlite_db.NewDoer(dbase), true
+	return for_sqlite.New(dbase), sqlite3_db.NewDoer(dbase), true
 }
 
 func getPermission(perm string) (fin.Permission, bool) {

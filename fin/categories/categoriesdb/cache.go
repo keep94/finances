@@ -3,6 +3,7 @@ package categoriesdb
 
 import (
 	"errors"
+
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	"github.com/keep94/toolbox/db"
