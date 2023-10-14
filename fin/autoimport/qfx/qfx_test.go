@@ -225,6 +225,13 @@ NEWFILEUID:NONE
 <FITID>10203
 <NAME>safeway
 </STMTTRN>
+<STMTTRN>
+<TRNTYPE>DEBIT
+<DTPOSTED>20121115120000[0:GMT]
+<TRNAMT>-23.04
+<FITID>0
+<NAME>Ava's
+</STMTTRN>
 </BANKTRANLIST>
 <LEDGERBAL>
 <BALAMT>-3392.62
@@ -332,7 +339,11 @@ func TestReadQFX(t *testing.T) {
 		{
 			Date:       date_util.YMD(2012, 11, 15),
 			Name:       "safeway",
-			CatPayment: fin.NewCatPayment(fin.Expense, 1212, true, 3)}}
+			CatPayment: fin.NewCatPayment(fin.Expense, 1212, true, 3)},
+		{
+			Date:       date_util.YMD(2012, 11, 15),
+			Name:       "Ava's",
+			CatPayment: fin.NewCatPayment(fin.Expense, 2304, true, 3)}}
 	if !reflect.DeepEqual(expectedEntries, entries) {
 		t.Errorf("Expected %v, got %v", expectedEntries, entries)
 	}
@@ -346,7 +357,20 @@ func TestReadQFX(t *testing.T) {
 		return
 	}
 	amexEntries := amexBatch.Entries()
-	if !reflect.DeepEqual(expectedEntries, amexEntries) {
+	expectedAmexEntries := []*fin.Entry{
+		{
+			Date:       date_util.YMD(2012, 11, 14),
+			Name:       "WHOLEFDS LAT 10155",
+			CatPayment: fin.NewCatPayment(fin.Expense, 10075, true, 3)},
+		{
+			Date:       date_util.YMD(2012, 11, 14),
+			Name:       "Amazon.com",
+			CatPayment: fin.NewCatPayment(fin.Expense, 5714, true, 3)},
+		{
+			Date:       date_util.YMD(2012, 11, 15),
+			Name:       "safeway",
+			CatPayment: fin.NewCatPayment(fin.Expense, 1212, true, 3)}}
+	if !reflect.DeepEqual(expectedAmexEntries, amexEntries) {
 		t.Errorf("Expected amex %v, got %v", expectedEntries, amexEntries)
 	}
 }
@@ -361,11 +385,11 @@ func TestSkipProcessed(t *testing.T) {
 		t.Errorf("Got error %v", err)
 		return
 	}
-	if output := batch.Len(); output != 3 {
-		t.Errorf("Expected 3, got %v", output)
+	if output := batch.Len(); output != 4 {
+		t.Errorf("Expected 4, got %v", output)
 	}
-	if output := len(batch.Entries()); output != 3 {
-		t.Errorf("Expected 3, got %v", output)
+	if output := len(batch.Entries()); output != 4 {
+		t.Errorf("Expected 4, got %v", output)
 	}
 	// Pretend a fitId that happens to match one of our entries gets processed in
 	// another account. This should not affect our batch.
@@ -381,12 +405,12 @@ func TestSkipProcessed(t *testing.T) {
 	// Our batch should have one fewer entries.
 	store.Add(nil, 3, qfxdb.FitIdSet{"10201": true})
 	newBatch, _ = batch.SkipProcessed(nil)
-	if output := len(newBatch.Entries()); output != 2 {
-		t.Errorf("Expected 2, got %v", output)
+	if output := len(newBatch.Entries()); output != 3 {
+		t.Errorf("Expected 3, got %v", output)
 	}
 	// But batches should be immutable.
-	if output := len(batch.Entries()); output != 3 {
-		t.Errorf("Expected 3, got %v", output)
+	if output := len(batch.Entries()); output != 4 {
+		t.Errorf("Expected 4, got %v", output)
 	}
 }
 
@@ -405,9 +429,12 @@ func TestMarkProcessed(t *testing.T) {
 		t.Errorf("Got error %v", err)
 		return
 	}
+
+	// FITIDs of 0 never get marked as processed, so when we reread the
+	// QFX file, the transaction with FIT ID 0 stays.
 	newBatch, _ = newBatch.SkipProcessed(nil)
-	if output := len(newBatch.Entries()); output != 0 {
-		t.Errorf("Expected 0, got %v", output)
+	if output := len(newBatch.Entries()); output != 1 {
+		t.Errorf("Expected 1, got %v", output)
 	}
 }
 

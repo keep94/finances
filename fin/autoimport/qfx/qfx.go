@@ -185,7 +185,12 @@ func (q *QfxBatch) MarkProcessed(t db.Transaction) error {
 func (q *QfxBatch) toFitIdSet() qfxdb.FitIdSet {
 	fitIdSet := make(qfxdb.FitIdSet, len(q.QfxEntries))
 	for _, qe := range q.QfxEntries {
-		fitIdSet[qe.FitId] = true
+
+		// Only report FITIDs that aren't 0. This way 0 never gets recorded
+		// as a used FITID, and 0 never get read as an existing FITID.
+		if strings.TrimSpace(qe.FitId) != "0" {
+			fitIdSet[qe.FitId] = true
+		}
 	}
 	return fitIdSet
 }
