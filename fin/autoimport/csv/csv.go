@@ -100,12 +100,31 @@ func fromPaypalHeader(line []string, accountId int64, entry *fin.Entry) (ok bool
 	return
 }
 
+func fromChaseHeader(line []string, accountId int64, entry *fin.Entry) (ok bool, err error) {
+	entry.Date, err = time.Parse("1/2/2006", line[1])
+	if err != nil {
+		return
+	}
+	entry.Name = line[3]
+	var amt int64
+	amt, err = fin.ParseUSD(line[6])
+	if err != nil {
+		return
+	}
+	entry.CatPayment = fin.NewCatPayment(fin.Expense, -amt, true, accountId)
+	ok = true
+	return
+}
+
 func fromHeader(line []string) func([]string, int64, *fin.Entry) (bool, error) {
 	if len(line) == 10 && line[0] == "Date" && line[3] == " Name" && line[6] == " Amount" {
 		return fromPaypalHeader
 	}
 	if len(line) == 5 && line[0] == "Date" && line[1] == "CheckNo" && line[2] == "Name" && line[3] == "Desc" && line[4] == "Amount" {
 		return fromNativeHeader
+	}
+	if len(line) == 8 && line[1] == "Transaction Date" && line[3] == "Description" && line[6] == "Amount" {
+		return fromChaseHeader
 	}
 	return nil
 }
