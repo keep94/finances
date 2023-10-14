@@ -9,6 +9,7 @@ import (
 	"github.com/keep94/finances/fin/autoimport"
 	"github.com/keep94/finances/fin/autoimport/qfx"
 	"github.com/keep94/finances/fin/autoimport/qfx/qfxdb"
+	"github.com/keep94/toolbox/date_util"
 	"hash/fnv"
 	"io"
 	"strconv"
@@ -46,7 +47,7 @@ func (c CsvLoader) Load(
 		if !ok || qentry.Date.Before(startDate) {
 			continue
 		}
-		qentry.FitId, err = generateFitId(line)
+		qentry.FitId, err = generateFitId(qentry.Date, line)
 		if err != nil {
 			return nil, err
 		}
@@ -109,12 +110,13 @@ func fromHeader(line []string) func([]string, int64, *fin.Entry) (bool, error) {
 	return nil
 }
 
-func generateFitId(line []string) (string, error) {
+func generateFitId(date time.Time, line []string) (string, error) {
 	h := fnv.New64a()
 	s := fmt.Sprintf("%v", line)
 	_, err := h.Write(([]byte)(s))
 	if err != nil {
 		return "", err
 	}
-	return strconv.FormatUint(h.Sum64(), 10), nil
+	dateStr := date.Format(date_util.YMDFormat)
+	return dateStr + ":" + strconv.FormatUint(h.Sum64(), 10), nil
 }

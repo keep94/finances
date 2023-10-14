@@ -7,7 +7,9 @@ import (
 	"github.com/keep94/finances/fin/autoimport/qfx/qfxdb"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db"
+	"github.com/stretchr/testify/assert"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -87,7 +89,8 @@ func TestReadPaypalCsv(t *testing.T) {
 
 func TestMarkProcessed(t *testing.T) {
 	r := strings.NewReader(kPaypalCsv)
-	loader := csv.CsvLoader{make(storeType)}
+	fitIdStore := make(storeType)
+	loader := csv.CsvLoader{fitIdStore}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2015, 9, 3))
 	if err != nil {
 		t.Errorf("Got error %v", err)
@@ -104,6 +107,30 @@ func TestMarkProcessed(t *testing.T) {
 	if output := len(newBatch.Entries()); output != 1 {
 		t.Errorf("Expected 1, got %v", output)
 	}
+	fitIds := fitIdStore[3]
+	assert.NotEmpty(t, fitIds)
+	for id := range fitIds {
+		assert.True(t, validateId(id), "Bad FitId: "+id)
+	}
+}
+
+func validateId(id string) bool {
+	idx := strings.Index(id, ":")
+	if idx != 8 {
+		return false
+	}
+	dateint, err := strconv.ParseInt(id[:idx], 10, 64)
+	if err != nil {
+		return false
+	}
+	if dateint < 20150000 || dateint >= 20160000 {
+		return false
+	}
+	checksum, err := strconv.ParseUint(id[idx+1:], 10, 64)
+	if err != nil {
+		return false
+	}
+	return checksum != 0
 }
 
 type storeType map[int64]map[string]bool
