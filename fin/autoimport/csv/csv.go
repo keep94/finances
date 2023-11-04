@@ -32,22 +32,23 @@ func (c CsvLoader) Load(
 	if err != nil {
 		return nil, err
 	}
-	parseit := fromHeader(line)
-	if parseit == nil {
+	parser := fromHeader(line)
+	if parser == nil {
 		return nil, errors.New("Unrecognized csv header")
 	}
 	var result []*qfx.QfxEntry
 	for line, err = reader.Read(); err == nil; line, err = reader.Read() {
 		var qentry qfx.QfxEntry
 		var ok bool
-		ok, err = parseit(line, accountId, &qentry.Entry)
+		ok, err = parser.ParseLine(line, accountId, &qentry.Entry)
 		if err != nil {
 			return nil, err
 		}
 		if !ok || qentry.Date.Before(startDate) {
 			continue
 		}
-		qentry.FitId, err = generateFitId(qentry.Date, line)
+		qentry.FitId, err = generateFitId(
+			qentry.Date, fitIdColumns(line, parser.FitIdColumnIndexes()))
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +64,24 @@ func (c CsvLoader) Load(
 	return &qfx.QfxBatch{Store: c.Store, AccountId: accountId, QfxEntries: result}, nil
 }
 
-func fromNativeHeader(line []string, accountId int64, entry *fin.Entry) (ok bool, err error) {
+// csvParser is responsible for parsing csv files.
+type csvParser interface {
+
+	// ParseLine parses one line of csv file. It writes line to entry.
+	// It returns true if successful, false and the error on error, or false
+	// and no error if line should be skipped.
+	ParseLine(line []string, accountId int64, entry *fin.Entry) (ok bool, err error)
+
+	// FitIdColumnIndexes returns the column indexes to use when computing
+	// FITID. Order is important.
+	FitIdColumnIndexes() []int
+}
+
+type nativeCsvParser struct {
+}
+
+func (nativeCsvParser) ParseLine(
+	line []string, accountId int64, entry *fin.Entry) (ok bool, err error) {
 	entry.Date, err = time.Parse("1/2/2006", line[0])
 	if err != nil {
 		return
@@ -81,7 +99,15 @@ func fromNativeHeader(line []string, accountId int64, entry *fin.Entry) (ok bool
 	return
 }
 
-func fromPaypalHeader(line []string, accountId int64, entry *fin.Entry) (ok bool, err error) {
+func (nativeCsvParser) FitIdColumnIndexes() []int {
+	return []int{0, 1, 2, 3, 4}
+}
+
+type paypalCsvParser struct {
+}
+
+func (paypalCsvParser) ParseLine(
+	line []string, accountId int64, entry *fin.Entry) (ok bool, err error) {
 	entry.Date, err = time.Parse("1/2/2006", line[0])
 	if err != nil {
 		return
@@ -100,14 +126,25 @@ func fromPaypalHeader(line []string, accountId int64, entry *fin.Entry) (ok bool
 	return
 }
 
-func fromChaseHeader(line []string, accountId int64, entry *fin.Entry) (ok bool, err error) {
-	entry.Date, err = time.Parse("1/2/2006", line[1])
+func (paypalCsvParser) FitIdColumnIndexes() []int {
+	return []int{0, 3, 6}
+}
+
+type chaseCsvParser struct {
+	DateIndex   int
+	NameIndex   int
+	AmountIndex int
+}
+
+func (c *chaseCsvParser) ParseLine(
+	line []string, accountId int64, entry *fin.Entry) (ok bool, err error) {
+	entry.Date, err = time.Parse("1/2/2006", line[c.DateIndex])
 	if err != nil {
 		return
 	}
-	entry.Name = line[3]
+	entry.Name = line[c.NameIndex]
 	var amt int64
-	amt, err = fin.ParseUSD(line[6])
+	amt, err = fin.ParseUSD(line[c.AmountIndex])
 	if err != nil {
 		return
 	}
@@ -116,17 +153,40 @@ func fromChaseHeader(line []string, accountId int64, entry *fin.Entry) (ok bool,
 	return
 }
 
-func fromHeader(line []string) func([]string, int64, *fin.Entry) (bool, error) {
+func (c *chaseCsvParser) FitIdColumnIndexes() []int {
+	return []int{c.DateIndex, c.NameIndex, c.AmountIndex}
+}
+
+func fromHeader(line []string) csvParser {
 	if len(line) == 10 && line[0] == "Date" && line[3] == " Name" && line[6] == " Amount" {
-		return fromPaypalHeader
+		return paypalCsvParser{}
 	}
 	if len(line) == 5 && line[0] == "Date" && line[1] == "CheckNo" && line[2] == "Name" && line[3] == "Desc" && line[4] == "Amount" {
-		return fromNativeHeader
+		return nativeCsvParser{}
 	}
 	if len(line) == 8 && line[1] == "Transaction Date" && line[3] == "Description" && line[6] == "Amount" {
-		return fromChaseHeader
+		return &chaseCsvParser{
+			DateIndex:   1,
+			NameIndex:   3,
+			AmountIndex: 6,
+		}
+	}
+	if len(line) == 7 && line[0] == "Transaction Date" && line[2] == "Description" && line[5] == "Amount" {
+		return &chaseCsvParser{
+			DateIndex:   0,
+			NameIndex:   2,
+			AmountIndex: 5,
+		}
 	}
 	return nil
+}
+
+func fitIdColumns(line []string, columns []int) []string {
+	result := make([]string, len(columns))
+	for i := range columns {
+		result[i] = line[columns[i]]
+	}
+	return result
 }
 
 func generateFitId(date time.Time, line []string) (string, error) {

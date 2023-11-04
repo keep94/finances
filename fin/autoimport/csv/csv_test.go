@@ -21,6 +21,13 @@ Card,Transaction Date,Post Date,Description,Category,Type,Amount,Memo
 5824,10/12/2023,10/13/2023,SUNNYVALE GAS,Gas,Sale,-83.87,
 `
 
+const kChaseCsvNoCard = `
+Transaction Date,Post Date,Description,Category,Type,Amount,Memo
+10/12/2023,10/13/2023,LOZANO SUNNYVALE CARWASH,Automotive,Sale,-42.99,
+10/12/2023,10/13/2023,APPLE.COM/US,Shopping,Sale,-181.41,
+10/12/2023,10/13/2023,SUNNYVALE GAS,Gas,Sale,-83.87,
+`
+
 const kPaypalCsv = `
 Date, Time, Time Zone, Name, Type, Status, Amount, Receipt ID, Balance,
 "12/6/2015","07:59:04","PST","TrackR, Inc","Express Checkout Payment Sent","Completed","-87.00","","0.00",
@@ -118,6 +125,74 @@ func TestReadChaseCsv(t *testing.T) {
 			Name:       "SUNNYVALE GAS",
 			CatPayment: fin.NewCatPayment(fin.Expense, 8387, true, 3)}}
 	assert.Equal(t, expectedEntries, entries)
+}
+
+func TestReadChaseCsvNoCard(t *testing.T) {
+	r := strings.NewReader(kChaseCsvNoCard)
+	var loader autoimport.Loader
+	loader = csv.CsvLoader{make(storeType)}
+	batch, err := loader.Load(3, "", r, date_util.YMD(2023, 10, 12))
+	if err != nil {
+		t.Errorf("Got error %v", err)
+		return
+	}
+	entries := batch.Entries()
+	expectedEntries := []*fin.Entry{
+		{
+			Date:       date_util.YMD(2023, 10, 12),
+			Name:       "LOZANO SUNNYVALE CARWASH",
+			CatPayment: fin.NewCatPayment(fin.Expense, 4299, true, 3)},
+		{
+			Date:       date_util.YMD(2023, 10, 12),
+			Name:       "APPLE.COM/US",
+			CatPayment: fin.NewCatPayment(fin.Expense, 18141, true, 3)},
+		{
+			Date:       date_util.YMD(2023, 10, 12),
+			Name:       "SUNNYVALE GAS",
+			CatPayment: fin.NewCatPayment(fin.Expense, 8387, true, 3)}}
+	assert.Equal(t, expectedEntries, entries)
+}
+
+func TestReadChaseCsvFormatChanged(t *testing.T) {
+
+	// Test that FITID calculation still works as expected even when
+	// Chase CSV file format changes.
+	r := strings.NewReader(kChaseCsv)
+	var loader autoimport.Loader
+	loader = csv.CsvLoader{make(storeType)}
+	batch, err := loader.Load(3, "", r, date_util.YMD(2023, 10, 12))
+	if err != nil {
+		t.Errorf("Got error %v", err)
+		return
+	}
+	assert.NotEmpty(t, batch.Entries())
+
+	batch.MarkProcessed(nil)
+
+	r = strings.NewReader(kChaseCsvNoCard)
+	newBatch, err := loader.Load(3, "", r, date_util.YMD(2023, 10, 12))
+	if err != nil {
+		t.Errorf("Got error reading new batch %v", err)
+		return
+	}
+	newBatch, _ = newBatch.SkipProcessed(nil)
+
+	// kChaseCsvNoCard and kChaseCsv are same transactions but different
+	// formats. This new batch should be empty since the previous batch
+	// was marked as processed.
+	assert.Empty(t, newBatch.Entries())
+}
+
+func TestReadChaseCsvNoCardNoTransactions(t *testing.T) {
+	r := strings.NewReader(kChaseCsvNoCard)
+	var loader autoimport.Loader
+	loader = csv.CsvLoader{make(storeType)}
+	batch, err := loader.Load(3, "", r, date_util.YMD(2023, 10, 13))
+	if err != nil {
+		t.Errorf("Got error %v", err)
+		return
+	}
+	assert.Empty(t, batch.Entries())
 }
 
 func TestMarkProcessed(t *testing.T) {
