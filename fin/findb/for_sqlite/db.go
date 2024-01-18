@@ -44,6 +44,9 @@ const (
 	kSQLUserByName               = "select id, name, go_password, permission, last_login from users where name = ?"
 	kSQLInsertUser               = "insert into users (name, go_password, permission, last_login) values (?, ?, ?, ?)"
 	kSQLUpdateUser               = "update users set name = ?, go_password = ?, permission = ?, last_login = ? where id = ?"
+	kSQLAllocationsByYear        = "select expense_id, amount from allocations where year = ?"
+	kSQLAddAllocation            = "insert into allocations (year, expense_id, amount) values (?, ?, ?)"
+	kSQLRemoveAllocation         = "delete from allocations where year = ? and expense_id = ?"
 )
 
 func New(db *sqlite3_db.Db) Store {
@@ -706,6 +709,48 @@ func (s Store) RemoveRecurringEntryById(t db.Transaction, id int64) error {
 	})
 }
 
+func (s Store) AllocationsByYear(t db.Transaction, year int64) (
+	result map[int64]int64, err error) {
+	err = sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) (err error) {
+		result, err = allocationsByYear(tx, year)
+		return
+	})
+	return
+}
+
+func allocationsByYear(tx *sql.Tx, year int64) (map[int64]int64, error) {
+	dbrows, err := tx.Query(kSQLAllocationsByYear, year)
+	if err != nil {
+		return nil, err
+	}
+	defer dbrows.Close()
+	result := make(map[int64]int64)
+	for dbrows.Next() {
+		var expenseId, amount int64
+		if err := dbrows.Scan(&expenseId, &amount); err != nil {
+			return nil, err
+		}
+		result[expenseId] = amount
+	}
+	return result, nil
+}
+
+func (s Store) RemoveAllocation(
+	t db.Transaction, year, expenseId int64) error {
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		_, err := tx.Exec(kSQLRemoveAllocation, year, expenseId)
+		return err
+	})
+}
+
+func (s Store) AddAllocation(
+	t db.Transaction, year, expenseId, amount int64) error {
+	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
+		_, err := tx.Exec(kSQLAddAllocation, year, expenseId, amount)
+		return err
+	})
+}
+
 type ReadOnlyStore struct {
 	findb.NoPermissionStore
 	store Store
@@ -761,4 +806,9 @@ func (s ReadOnlyStore) RecurringEntryById(
 func (s ReadOnlyStore) RecurringEntries(
 	t db.Transaction, consumer consume2.Consumer[fin.RecurringEntry]) error {
 	return s.store.RecurringEntries(t, consumer)
+}
+
+func (s ReadOnlyStore) AllocationsByYear(t db.Transaction, year int64) (
+	map[int64]int64, error) {
+	return s.store.AllocationsByYear(t, year)
 }

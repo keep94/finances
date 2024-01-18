@@ -13,9 +13,11 @@ import (
 	"github.com/keep94/context"
 	"github.com/keep94/finances/apps/ledger/ac"
 	"github.com/keep94/finances/apps/ledger/account"
+	"github.com/keep94/finances/apps/ledger/addenvelope"
 	"github.com/keep94/finances/apps/ledger/catedit"
 	"github.com/keep94/finances/apps/ledger/chpasswd"
 	"github.com/keep94/finances/apps/ledger/common"
+	"github.com/keep94/finances/apps/ledger/envelopes"
 	"github.com/keep94/finances/apps/ledger/export"
 	"github.com/keep94/finances/apps/ledger/list"
 	"github.com/keep94/finances/apps/ledger/login"
@@ -193,6 +195,17 @@ func main() {
 			Store:  kReadOnlyStore,
 			Cdc:    kReadOnlyCatDetailCache,
 			Clock:  kClock,
+			LN:     ln,
+			Global: global})
+	mux.Handle(
+		"/fin/envelopes",
+		&envelopes.Handler{
+			Doer:   kDoer,
+			LN:     ln,
+			Global: global})
+	mux.Handle(
+		"/fin/addenvelope",
+		&addenvelope.Handler{
 			LN:     ln,
 			Global: global})
 	mux.Handle(

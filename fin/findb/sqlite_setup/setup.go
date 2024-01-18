@@ -44,5 +44,9 @@ func SetUpTables(tx *sql.Tx) error {
 		return err
 	}
 	_, err = tx.Exec("create unique index if not exists qfx_fitids_acct_id_fit_id_idx on qfx_fitids (acct_id, fit_id)")
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec("create table if not exists allocations (expense_id INTEGER, year INTEGER, amount INTEGER, PRIMARY KEY (expense_id, year))")
 	return err
 }

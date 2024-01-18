@@ -34,7 +34,8 @@ var (
 )
 
 var (
-	ErrXsrf = errors.New("Page had grown stale. Please resubmit.")
+	ErrXsrf        = errors.New("Page had grown stale. Please resubmit.")
+	ErrInvalidYear = errors.New("Year must be in the 21st century")
 )
 
 type RecurringUnitComboBoxType []fin.RecurringUnit
@@ -405,6 +406,11 @@ func NewTemplate(name, templateStr string) *template.Template {
 			"FormatDate":   formatDate,
 			"FormatUSD":    formatUSD,
 			"FormatUSDRaw": fin.FormatUSD}).Parse(templateStr))
+}
+
+// Is21stCentury returns true if year is in the 21st century.
+func Is21stCentury(year int) bool {
+	return year >= 2000 && year < 2100
 }
 
 func formatUSD(amt int64) template.HTML {

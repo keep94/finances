@@ -195,6 +195,12 @@ func TestUpdateUser(t *testing.T) {
 	fixture.UpdateUser(t, New(db))
 }
 
+func TestAllocations(t *testing.T) {
+	db := openDb(t)
+	defer closeDb(t, db)
+	fixture.Allocations(t, New(db))
+}
+
 func newEntryAccountFixture(db *sqlite3_db.Db) fixture.EntryAccountFixture {
 	return fixture.EntryAccountFixture{Doer: sqlite3_db.NewDoer(db)}
 }

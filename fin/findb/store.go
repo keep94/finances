@@ -204,6 +204,23 @@ type RemoveUserByNameRunner interface {
 	RemoveUserByName(t db.Transaction, name string) error
 }
 
+type AllocationsByYearRunner interface {
+	// AllocationsByYear returns the envelope allocations by year. In the
+	// returned map, the keys are the expenseIds, and the values are the
+	// allocations in pennies. Note that expenseId=4 corresponds to catId=0:4
+	AllocationsByYear(t db.Transaction, year int64) (map[int64]int64, error)
+}
+
+type RemoveAllocationRunner interface {
+	// RemoveAllocation removes an envelope allocation.
+	RemoveAllocation(t db.Transaction, year, expenseId int64) error
+}
+
+type AddAllocationRunner interface {
+	// AddAllocation adds an envelope allocation.
+	AddAllocation(t db.Transaction, year, expenseId, amount int64) error
+}
+
 // EntryChanges represents changes to entries.
 type EntryChanges struct {
 	// Adds is entries to add
@@ -332,6 +349,21 @@ func (n NoPermissionStore) Users(
 }
 
 func (n NoPermissionStore) RemoveUserByName(t db.Transaction, name string) error {
+	return NoPermission
+}
+
+func (n NoPermissionStore) AllocationsByYear(t db.Transaction, year int64) (
+	map[int64]int64, error) {
+	return nil, NoPermission
+}
+
+func (n NoPermissionStore) RemoveAllocation(
+	t db.Transaction, year, expenseId int64) error {
+	return NoPermission
+}
+
+func (n NoPermissionStore) AddAllocation(
+	t db.Transaction, year, expenseId, amount int64) error {
 	return NoPermission
 }
 

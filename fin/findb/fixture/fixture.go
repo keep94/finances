@@ -15,6 +15,7 @@ import (
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/passwords"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -26,6 +27,12 @@ var (
 // package that access entries and accounts. Each exported method is one test.
 type EntryAccountFixture struct {
 	Doer db.Doer
+}
+
+type AllocationsStore interface {
+	findb.AllocationsByYearRunner
+	findb.RemoveAllocationRunner
+	findb.AddAllocationRunner
 }
 
 type MinimalStore interface {
@@ -1268,6 +1275,23 @@ func UpdateUser(t *testing.T, store UpdateUserStore) {
 		t.Fatalf("Got error updating database: %v", err)
 	}
 	verifyUser(t, store, &user)
+}
+
+func Allocations(t *testing.T, store AllocationsStore) {
+	assert.NoError(t, store.AddAllocation(nil, 2024, 1, 10000))
+	assert.NoError(t, store.AddAllocation(nil, 2024, 2, 9000))
+	assert.NoError(t, store.AddAllocation(nil, 2025, 1, 5000))
+	assert.NoError(t, store.AddAllocation(nil, 2025, 2, 4000))
+	alloc, err := store.AllocationsByYear(nil, 2024)
+	assert.NoError(t, err)
+	assert.Equal(t, map[int64]int64{1: 10000, 2: 9000}, alloc)
+	assert.NoError(t, store.RemoveAllocation(nil, 2024, 1))
+	alloc, err = store.AllocationsByYear(nil, 2024)
+	assert.NoError(t, err)
+	assert.Equal(t, map[int64]int64{2: 9000}, alloc)
+	alloc, err = store.AllocationsByYear(nil, 2025)
+	assert.NoError(t, err)
+	assert.Equal(t, map[int64]int64{1: 5000, 2: 4000}, alloc)
 }
 
 func createUsersWithFunc(

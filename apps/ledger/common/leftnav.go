@@ -32,6 +32,7 @@ Accounts:
 <a {{if .Reports}}class="selected"{{end}} href="{{.ReportUrl}}">Reports</a><br>
 <a {{if .Trends}}class="selected"{{end}} href="{{.TrendUrl}}">Trends</a><br>
 <a {{if .Totals}}class="selected"{{end}} href="/fin/totals">Totals</a><br>
+<a {{if .Envelopes}}class="selected"{{end}} href="{{.EnvelopeUrl}}">Envelopes</a><br>
 <br>
 <a {{if .Search}}class="selected"{{end}} href="/fin/list">Search</a><br>
 <a {{if .Unreviewed}}class="selected"{{end}} href="/fin/unreviewed">Review</a><br>
@@ -86,6 +87,7 @@ const (
 	recurring
 	export
 	chpasswd
+	envelopes
 )
 
 func SelectAccount(id int64) Selecter { return Selecter{cat: accounts, id: id} }
@@ -98,6 +100,7 @@ func SelectManage() Selecter          { return Selecter{cat: manage} }
 func SelectRecurring() Selecter       { return Selecter{cat: recurring} }
 func SelectExport() Selecter          { return Selecter{cat: export} }
 func SelectChpasswd() Selecter        { return Selecter{cat: chpasswd} }
+func SelectEnvelopes() Selecter       { return Selecter{cat: envelopes} }
 func SelectNone() Selecter            { return Selecter{} }
 
 // LeftNav is for creating the left navigation bar.
@@ -126,6 +129,7 @@ func (l *LeftNav) Generate(
 	now := date_util.TimeToDate(l.Clock.Now())
 	// Include today!
 	now = now.AddDate(0, 0, 1)
+	year := now.Year()
 	oneMonthAgo := now.AddDate(0, -1, 0)
 	oneYearAgo := now.AddDate(-1, 0, 0)
 	var sb strings.Builder
@@ -139,6 +143,9 @@ func (l *LeftNav) Generate(
 			"/fin/trends",
 			"sd", oneYearAgo.Format(date_util.YMDFormat),
 			"ed", now.Format(date_util.YMDFormat)),
+		EnvelopeUrl: http_util.NewUrl(
+			"/fin/envelopes",
+			"year", strconv.Itoa(year)),
 		UserName:  session.User.Name,
 		LastLogin: lastLoginStr,
 		sel:       sel})
@@ -148,11 +155,12 @@ func (l *LeftNav) Generate(
 type view struct {
 	AccountLinker
 	categories.CatDetailStore
-	ReportUrl *url.URL
-	TrendUrl  *url.URL
-	UserName  string
-	LastLogin string
-	sel       Selecter
+	ReportUrl   *url.URL
+	TrendUrl    *url.URL
+	EnvelopeUrl *url.URL
+	UserName    string
+	LastLogin   string
+	sel         Selecter
 }
 
 func (v *view) Account(id int64) bool { return v.sel == SelectAccount(id) }
@@ -165,6 +173,7 @@ func (v *view) Manage() bool          { return v.sel == SelectManage() }
 func (v *view) Recurring() bool       { return v.sel == SelectRecurring() }
 func (v *view) Export() bool          { return v.sel == SelectExport() }
 func (v *view) Chpasswd() bool        { return v.sel == SelectChpasswd() }
+func (v *view) Envelopes() bool       { return v.sel == SelectEnvelopes() }
 
 func init() {
 	kLeftNavTemplate = NewTemplate("leftnav", kLeftNavTemplateSpec)
