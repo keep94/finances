@@ -69,6 +69,22 @@ func TestEnvelopesEmpty(t *testing.T) {
 	assert.Equal(t, int64(0), es.TotalProgress())
 }
 
+func TestEnvelopesSort(t *testing.T) {
+	e1 := &Envelope{Allocated: 10000, Spent: 19999}
+	e2 := &Envelope{Allocated: 30000, Spent: 10000}
+	e3 := &Envelope{Allocated: 20000, Spent: 30000}
+	e4 := &Envelope{Allocated: 40000, Spent: 40000}
+	es := Envelopes{e1, e2, e3, e4}
+	es.Sort(ByAllocatedDesc)
+	assert.Equal(t, Envelopes{e4, e2, e3, e1}, es)
+	es.Sort(BySpentDesc)
+	assert.Equal(t, Envelopes{e4, e3, e1, e2}, es)
+	es.Sort(ByRemainingAsc)
+	assert.Equal(t, Envelopes{e3, e1, e4, e2}, es)
+	es.Sort(ByProgressDesc)
+	assert.Equal(t, Envelopes{e1, e3, e4, e2}, es)
+}
+
 func TestSummary(t *testing.T) {
 	var es Envelopes
 	es.add(Envelope{Allocated: 3000, Spent: 5000})
@@ -76,6 +92,19 @@ func TestSummary(t *testing.T) {
 	summary := &Summary{Envelopes: es, TotalSpent: 8000}
 	assert.Equal(t, int64(1000), summary.UncategorizedSpend())
 	assert.Equal(t, int64(900), summary.TotalProgress())
+}
+
+func TestSummarySort(t *testing.T) {
+	e1 := &Envelope{Allocated: 10000, Spent: 19999}
+	e2 := &Envelope{Allocated: 30000, Spent: 10000}
+	e3 := &Envelope{Allocated: 20000, Spent: 30000}
+	e4 := &Envelope{Allocated: 40000, Spent: 40000}
+	es := Envelopes{e1, e2, e3, e4}
+	summary := Summary{Envelopes: es, TotalSpent: 100000}
+	sortedSummary := summary
+	sortedSummary.Sort(ByAllocatedDesc)
+	assert.NotEqual(t, summary, sortedSummary)
+	assert.Equal(t, Envelopes{e4, e2, e3, e1}, sortedSummary.Envelopes)
 }
 
 func TestSummaryByYear(t *testing.T) {

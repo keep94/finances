@@ -2,6 +2,8 @@
 package envelopes
 
 import (
+	"sort"
+
 	"github.com/keep94/finances/fin"
 	"github.com/keep94/finances/fin/categories"
 	"github.com/keep94/finances/fin/consumers"
@@ -46,8 +48,23 @@ func (e *Envelope) Progress() int64 {
 	return progress(e.Spent, e.Allocated)
 }
 
+// Ordering represents an ordering for envelopes.
+type Ordering func([]*Envelope)
+
+var (
+	ByAllocatedDesc Ordering = byAllocatedDesc
+	BySpentDesc     Ordering = bySpentDesc
+	ByRemainingAsc  Ordering = byRemainingAsc
+	ByProgressDesc  Ordering = byProgressDesc
+)
+
 // Envelopes represents a collection of envelopes for a year
 type Envelopes []*Envelope
+
+// Sort sorts these envelopes in place according to ordering.
+func (e Envelopes) Sort(ordering Ordering) {
+	ordering(e)
+}
 
 // Len returns the number of envelopes
 func (e Envelopes) Len() int {
@@ -95,6 +112,13 @@ type Summary struct {
 
 	// Total spent for the year in pennies including money not from envelopes
 	TotalSpent int64
+}
+
+// Sort sorts the envelopes in this summary according to ordering.
+func (s *Summary) Sort(ordering Ordering) {
+	ordered := append(Envelopes(nil), s.Envelopes...)
+	ordered.Sort(ordering)
+	s.Envelopes = ordered
 }
 
 // UncategorizedSpend returns the amount spent for the year in pennies that
@@ -173,4 +197,34 @@ func progress(spent, allocated int64) int64 {
 	}
 	prog := float64(spent)/float64(allocated)*12.0 + 1.0
 	return int64(prog*100.0 + 0.5)
+}
+
+func byAllocatedDesc(es []*Envelope) {
+	sort.Slice(
+		es,
+		func(i, j int) bool { return es[i].Allocated > es[j].Allocated },
+	)
+}
+
+func bySpentDesc(es []*Envelope) {
+	sort.Slice(
+		es,
+		func(i, j int) bool { return es[i].Spent > es[j].Spent },
+	)
+}
+
+func byRemainingAsc(es []*Envelope) {
+	sort.Slice(
+		es,
+		func(i, j int) bool {
+			return es[i].Remaining() < es[j].Remaining()
+		},
+	)
+}
+
+func byProgressDesc(es []*Envelope) {
+	sort.Slice(
+		es,
+		func(i, j int) bool { return es[i].Progress() > es[j].Progress() },
+	)
 }

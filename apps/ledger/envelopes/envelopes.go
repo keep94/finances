@@ -4,7 +4,6 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 
 	"github.com/keep94/finances/apps/ledger/common"
@@ -109,7 +108,7 @@ Grand Total Progress: --<br>
 const (
 	kSort      = "sort"
 	kName      = "name"
-	kAlloc     = "alloc"
+	kAllocated = "allocated"
 	kSpent     = "spent"
 	kRemaining = "remaining"
 	kProgress  = "progress"
@@ -118,11 +117,11 @@ const (
 var (
 	kTemplate *template.Template
 
-	kOrderings = map[string]func(envs edata.Envelopes){
-		kAlloc:     sortByAlloc,
-		kSpent:     sortBySpent,
-		kRemaining: sortByRemaining,
-		kProgress:  sortByProgress,
+	kOrderings = map[string]edata.Ordering{
+		kAllocated: edata.ByAllocatedDesc,
+		kSpent:     edata.BySpentDesc,
+		kRemaining: edata.ByRemainingAsc,
+		kProgress:  edata.ByProgressDesc,
 	}
 )
 
@@ -182,7 +181,7 @@ func (h *Handler) doGet(
 			addEnvelopeUrl,
 			summary,
 			http_util.WithParams(r.URL, kSort, kName),
-			http_util.WithParams(r.URL, kSort, kAlloc),
+			http_util.WithParams(r.URL, kSort, kAllocated),
 			http_util.WithParams(r.URL, kSort, kSpent),
 			http_util.WithParams(r.URL, kSort, kRemaining),
 			http_util.WithParams(r.URL, kSort, kProgress),
@@ -206,50 +205,17 @@ func (h *Handler) getSummary(
 	if err != nil {
 		return nil, err
 	}
-	result = sortEnvelopes(result, order)
+	result = withSortedEnvelopes(result, order)
 	return
 }
 
-func sortEnvelopes(summary *edata.Summary, order string) *edata.Summary {
+func withSortedEnvelopes(
+	summary *edata.Summary, order string) *edata.Summary {
 	result := *summary
-	ordering := kOrderings[order]
-	if ordering == nil {
-		return &result
+	if ordering, ok := kOrderings[order]; ok {
+		result.Sort(ordering)
 	}
-	orderedEnvelopes := append(edata.Envelopes(nil), result.Envelopes...)
-	ordering(orderedEnvelopes)
-	result.Envelopes = orderedEnvelopes
 	return &result
-}
-
-func sortByAlloc(envs edata.Envelopes) {
-	sort.Slice(
-		envs,
-		func(i, j int) bool { return envs[i].Allocated > envs[j].Allocated },
-	)
-}
-
-func sortBySpent(envs edata.Envelopes) {
-	sort.Slice(
-		envs,
-		func(i, j int) bool { return envs[i].Spent > envs[j].Spent },
-	)
-}
-
-func sortByRemaining(envs edata.Envelopes) {
-	sort.Slice(
-		envs,
-		func(i, j int) bool {
-			return envs[i].Remaining() < envs[j].Remaining()
-		},
-	)
-}
-
-func sortByProgress(envs edata.Envelopes) {
-	sort.Slice(
-		envs,
-		func(i, j int) bool { return envs[i].Progress() > envs[j].Progress() },
-	)
 }
 
 func doPostAction(r *http.Request, store findb.RemoveAllocationRunner) error {
