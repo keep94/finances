@@ -31,6 +31,12 @@ func TestProgressWayOver(t *testing.T) {
 	assert.Equal(t, "101-22", p.String())
 }
 
+func TestProgressOverflow(t *testing.T) {
+	bigInt := int64(1) << 62
+	p := ProgressOf(bigInt/3+1, bigInt)
+	assert.Equal(t, Progress{Month: 5, Day: 1}, p)
+}
+
 func TestProgressFebruary(t *testing.T) {
 	p := ProgressOf(599, 3600)
 	assert.Equal(t, Progress{Month: 2, Day: 28}, p)

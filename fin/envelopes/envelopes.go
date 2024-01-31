@@ -40,7 +40,7 @@ func ProgressOf(spend, allocation int64) Progress {
 	if spend < 0 {
 		return Progress{Month: 1, Day: 1}
 	}
-	totalDays := (spend * 360) / allocation
+	totalDays := int64(float64(spend) / float64(allocation) * 360.0)
 	month := (totalDays / 30) + 1
 	day := (totalDays % 30) + 1
 	if month == 2 && day > 28 {
