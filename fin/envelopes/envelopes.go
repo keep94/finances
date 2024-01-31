@@ -242,17 +242,6 @@ func allocationsToCatSet(allocations map[int64]int64) fin.CatSet {
 	return result
 }
 
-func progress(spent, allocated int64) int64 {
-	if allocated <= 0 {
-		return 0
-	}
-	if spent < 0 {
-		return 100
-	}
-	prog := float64(spent)/float64(allocated)*12.0 + 1.0
-	return int64(prog*100.0 + 0.5)
-}
-
 func byAllocatedDesc(es []*Envelope) {
 	sort.Slice(
 		es,
