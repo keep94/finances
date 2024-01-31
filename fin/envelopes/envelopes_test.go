@@ -21,21 +21,65 @@ var (
 	kError = errors.New("An error")
 )
 
+func TestProgress(t *testing.T) {
+	p := ProgressOf(329, 3600)
+	assert.Equal(t, Progress{Month: 2, Day: 3}, p)
+}
+
+func TestProgressWayOver(t *testing.T) {
+	p := ProgressOf(1007, 120)
+	assert.Equal(t, "101-22", p.String())
+}
+
+func TestProgressFebruary(t *testing.T) {
+	p := ProgressOf(599, 3600)
+	assert.Equal(t, Progress{Month: 2, Day: 28}, p)
+}
+
+func TestProgressMarch(t *testing.T) {
+	p := ProgressOf(299, 1200)
+	assert.Equal(t, Progress{Month: 3, Day: 30}, p)
+	assert.True(t, p.IsDefined())
+}
+
+func TestProgressNegative(t *testing.T) {
+	p := ProgressOf(-79, 1200)
+	assert.Equal(t, Progress{Month: 1, Day: 1}, p)
+	assert.True(t, p.IsDefined())
+}
+
+func TestProgressUndefined(t *testing.T) {
+	p := ProgressOf(343, 0)
+	assert.Equal(t, Progress{}, p)
+	assert.False(t, p.IsDefined())
+	assert.Empty(t, p.String())
+}
+
+func TestProgressString(t *testing.T) {
+	p := Progress{Month: 11, Day: 4}
+	assert.Equal(t, "11-04", p.String())
+	p = Progress{Month: 5, Day: 31}
+	assert.Equal(t, "05-31", p.String())
+}
+
+func TestProgressLess(t *testing.T) {
+	p := Progress{Month: 4, Day: 15}
+	assert.True(t, p.Less(Progress{Month: 5, Day: 1}))
+	assert.True(t, p.Less(Progress{Month: 4, Day: 16}))
+	assert.False(t, p.Less(Progress{Month: 4, Day: 15}))
+	assert.False(t, p.Less(Progress{Month: 3, Day: 30}))
+}
+
 func TestEnvelope(t *testing.T) {
 	e := Envelope{Allocated: 6000, Spent: 2000}
 	assert.Equal(t, int64(4000), e.Remaining())
-	assert.Equal(t, int64(500), e.Progress())
+	assert.Equal(t, Progress{Month: 5, Day: 1}, e.Progress())
 }
 
 func TestEnvelopeNoAlloc(t *testing.T) {
 	e := Envelope{Spent: 2000}
 	assert.Equal(t, int64(-2000), e.Remaining())
-	assert.Equal(t, int64(0), e.Progress())
-}
-
-func TestEnvelopeNegativeSpend(t *testing.T) {
-	e := Envelope{Allocated: 6000, Spent: -2000}
-	assert.Equal(t, int64(100), e.Progress())
+	assert.False(t, e.Progress().IsDefined())
 }
 
 func TestEnvelopes(t *testing.T) {
@@ -46,19 +90,7 @@ func TestEnvelopes(t *testing.T) {
 	assert.Equal(t, int64(8000), es.TotalAllocated())
 	assert.Equal(t, int64(5000), es.TotalSpent())
 	assert.Equal(t, int64(3000), es.TotalRemaining())
-	assert.Equal(t, int64(850), es.TotalProgress())
-}
-
-func TestEnvelopesNegativeAlloc(t *testing.T) {
-	var es Envelopes
-	es.add(Envelope{Allocated: -1000, Spent: 2000})
-	assert.Equal(t, int64(0), es.TotalProgress())
-}
-
-func TestEnvelopesNegativeSpend(t *testing.T) {
-	var es Envelopes
-	es.add(Envelope{Allocated: 5000, Spent: -2000})
-	assert.Equal(t, int64(100), es.TotalProgress())
+	assert.Equal(t, Progress{Month: 8, Day: 16}, es.TotalProgress())
 }
 
 func TestEnvelopesEmpty(t *testing.T) {
@@ -66,7 +98,7 @@ func TestEnvelopesEmpty(t *testing.T) {
 	assert.Equal(t, int64(0), es.TotalAllocated())
 	assert.Equal(t, int64(0), es.TotalSpent())
 	assert.Equal(t, int64(0), es.TotalRemaining())
-	assert.Equal(t, int64(0), es.TotalProgress())
+	assert.False(t, es.TotalProgress().IsDefined())
 }
 
 func TestEnvelopesSort(t *testing.T) {
@@ -91,7 +123,7 @@ func TestSummary(t *testing.T) {
 	es.add(Envelope{Allocated: 9000, Spent: 2000})
 	summary := &Summary{Envelopes: es, TotalSpent: 8000}
 	assert.Equal(t, int64(1000), summary.UncategorizedSpend())
-	assert.Equal(t, int64(900), summary.TotalProgress())
+	assert.Equal(t, Progress{Month: 9, Day: 1}, summary.TotalProgress())
 }
 
 func TestSummarySort(t *testing.T) {

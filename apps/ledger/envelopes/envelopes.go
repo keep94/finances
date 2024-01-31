@@ -53,16 +53,16 @@ Envelope Count: {{.Summary.Envelopes.Len}}<br>
 Total Allocated: {{FormatUSDRaw .Summary.Envelopes.TotalAllocated}}<br>
 Total Spent: {{FormatUSDRaw .Summary.Envelopes.TotalSpent}}<br>
 Total Remaining: {{FormatUSD .Summary.Envelopes.TotalRemaining}}<br>
-{{with .Summary.Envelopes.TotalProgress}}
-Total Progress: {{FormatUSDRaw .}}<br>
+{{with .Summary.Envelopes.TotalProgress.String}}
+Total Progress: {{.}}<br>
 {{else}}
 Total Progress: --<br>
 {{end}}
 <br>
 Uncategorized Spend: {{FormatUSDRaw .Summary.UncategorizedSpend}}<br>
 Grand Total Spent: {{FormatUSDRaw .Summary.TotalSpent}}<br>
-{{with .Summary.TotalProgress}}
-Grand Total Progress: {{FormatUSDRaw .}}<br>
+{{with .Summary.TotalProgress.String}}
+Grand Total Progress: {{.}}<br>
 {{else}}
 Grand Total Progress: --<br>
 {{end}}
@@ -83,8 +83,8 @@ Grand Total Progress: --<br>
       <td align="right">{{FormatUSDRaw .Allocated}}</td>
       <td align="right">{{FormatUSDRaw .Spent}}</td>
       <td align="right">{{FormatUSD .Remaining}}</td>
-{{with .Progress}}
-      <td align="right">{{FormatUSDRaw .}}</td>
+{{with .Progress.String}}
+      <td align="right">{{.}}</td>
 {{else}}
       <td align="right">--</td>
 {{end}}

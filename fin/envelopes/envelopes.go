@@ -2,6 +2,7 @@
 package envelopes
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/keep94/finances/fin"
@@ -15,6 +16,65 @@ import (
 const (
 	kNonNilTransactionRequired = "non nil transaction required"
 )
+
+// Progress represents how far through the year an envelope is spent as
+// month and day. For example, if an envelope is half spent, progress would
+// be July 1 (7-01). If an envelope is 3/4 spent, progress would be
+// Oct 1 (10-1).
+type Progress struct {
+	Month int64
+	Day   int64
+}
+
+// ProgressOf returns the progress given spend and allocation in pennies.
+// If allocation is zero or negative, calling IsDefined on returned
+// Progress yields false.  If spend is negative and allocation is positve,
+// ProgressOf returns "1-01" for the beginning of the year. When calculating,
+// all months are considered 30 days so that all months are equal. If the
+// day for February would be greater than 28, ProgressOf just returns "2-28."
+// The month of returned progress will exceed 12 if spend exceeds allocation.
+func ProgressOf(spend, allocation int64) Progress {
+	if allocation <= 0 {
+		return Progress{}
+	}
+	if spend < 0 {
+		return Progress{Month: 1, Day: 1}
+	}
+	totalDays := (spend * 360) / allocation
+	month := (totalDays / 30) + 1
+	day := (totalDays % 30) + 1
+	if month == 2 && day > 28 {
+		day = 28
+	}
+	return Progress{Month: month, Day: day}
+}
+
+// IsDefined returns true if progress is defined. Progress is undefined
+// if allocation for the envelope is 0 or negative.
+func (p Progress) IsDefined() bool {
+	return p.Month > 0 && p.Day > 0
+}
+
+// String returns progress as a string e.g "8-05" for Aug 5. If IsDefined()
+// returns false, then String returns the empty string.
+func (p Progress) String() string {
+	if !p.IsDefined() {
+		return ""
+	}
+	return fmt.Sprintf("%02d-%02d", p.Month, p.Day)
+}
+
+// Less returns true if p represents less progress than rhs. That is p comes
+// earlier in the year than rhs.
+func (p Progress) Less(rhs Progress) bool {
+	if p.Month < rhs.Month {
+		return true
+	}
+	if p.Month > rhs.Month {
+		return false
+	}
+	return p.Day < rhs.Day
+}
 
 // Envelope represents a single yearly envelope.
 type Envelope struct {
@@ -38,14 +98,9 @@ func (e *Envelope) Remaining() int64 {
 	return e.Allocated - e.Spent
 }
 
-// Progress returns what part of the year spending is at. For example, 800
-// means spending is at beginning of August; 1250 means spending is at mid
-// December. If allocation for this envelope is 0, Progress return 0. Note
-// that normally progress returns at least 100 as that means beginning of
-// January. If allocation is positive, and spending is negative, Progress
-// returns 100 for beginning of January.
-func (e *Envelope) Progress() int64 {
-	return progress(e.Spent, e.Allocated)
+// Progress returns the progress for this envelope.
+func (e *Envelope) Progress() Progress {
+	return ProgressOf(e.Spent, e.Allocated)
 }
 
 // Ordering represents an ordering for envelopes.
@@ -94,10 +149,9 @@ func (e Envelopes) TotalRemaining() int64 {
 	return e.TotalAllocated() - e.TotalSpent()
 }
 
-// TotalProgress returns the total progress on all envelopes in the same
-// way that Envelope.Progress returns the progress on a single envelope.
-func (e Envelopes) TotalProgress() int64 {
-	return progress(e.TotalSpent(), e.TotalAllocated())
+// TotalProgress returns the total progress on all envelopes.
+func (e Envelopes) TotalProgress() Progress {
+	return ProgressOf(e.TotalSpent(), e.TotalAllocated())
 }
 
 func (e *Envelopes) add(envelope Envelope) {
@@ -130,8 +184,8 @@ func (s *Summary) UncategorizedSpend() int64 {
 // TotalProgress returns the grand total progress which is similar to
 // calling TotalProgress() on the envelopes except that it uses total
 // spent from this instance instead of total spent from the envelopes.
-func (s *Summary) TotalProgress() int64 {
-	return progress(s.TotalSpent, s.Envelopes.TotalAllocated())
+func (s *Summary) TotalProgress() Progress {
+	return ProgressOf(s.TotalSpent, s.Envelopes.TotalAllocated())
 }
 
 type Store interface {
@@ -225,6 +279,6 @@ func byRemainingAsc(es []*Envelope) {
 func byProgressDesc(es []*Envelope) {
 	sort.Slice(
 		es,
-		func(i, j int) bool { return es[i].Progress() > es[j].Progress() },
+		func(i, j int) bool { return es[j].Progress().Less(es[i].Progress()) },
 	)
 }
