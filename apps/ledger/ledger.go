@@ -69,6 +69,7 @@ var (
 	fGmailConfig        string
 	fLinks              bool
 	fPopularityLookback int
+	fNoWifi             bool
 )
 
 var (
@@ -178,14 +179,16 @@ func main() {
 			Cdc:    kReadOnlyCatDetailCache,
 			Store:  kReadOnlyStore,
 			LN:     ln,
-			Global: global})
+			Global: global,
+			NoWifi: fNoWifi})
 	mux.Handle(
 		"/fin/trends",
 		&trends.Handler{
 			Store:  kReadOnlyStore,
 			Cdc:    kReadOnlyCatDetailCache,
 			LN:     ln,
-			Global: global})
+			Global: global,
+			NoWifi: fNoWifi})
 	mux.Handle(
 		"/fin/totals",
 		&totals.Handler{Store: kReadOnlyStore, LN: ln, Global: global})
@@ -299,6 +302,7 @@ func init() {
 		"popularity_lookback",
 		200,
 		"Number of entries to look back to find most popular categories")
+	flag.BoolVar(&fNoWifi, "nowifi", false, "Run in nowifi mode")
 }
 
 func setupDb(filepath string) {

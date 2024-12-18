@@ -145,6 +145,7 @@ type Handler struct {
 	Store  findb.EntriesRunner
 	LN     *common.LeftNav
 	Global *common.Global
+	NoWifi bool
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -202,10 +203,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Sets:         displaySets,
 		CatDetails:   cds.DetailsByIds(catsInDropDown),
 		LeftNav:      leftnav,
-		GraphCode:    mustEmitGraphCode(displaySets),
+		GraphCode:    h.mustEmitGraphCode(displaySets),
 		Global:       h.Global}
 
 	http_util.WriteTemplate(w, kTemplate, v)
+}
+
+func (h *Handler) mustEmitGraphCode(sets []*dataSet) template.HTML {
+	if h.NoWifi {
+		return ""
+	}
+	graphs := make(map[string]google_jsgraph.Graph, len(sets))
+	for _, s := range sets {
+		s.RegisterGraph(graphs)
+	}
+	return google_jsgraph.MustEmit(graphs)
 }
 
 type dataPoint struct {
@@ -247,14 +259,6 @@ func (d *dataSet) RegisterGraph(graphs map[string]google_jsgraph.Graph) {
 			Palette: d.Colors,
 		}
 	}
-}
-
-func mustEmitGraphCode(sets []*dataSet) template.HTML {
-	graphs := make(map[string]google_jsgraph.Graph, len(sets))
-	for _, s := range sets {
-		s.RegisterGraph(graphs)
-	}
-	return google_jsgraph.MustEmit(graphs)
 }
 
 type view struct {

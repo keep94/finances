@@ -182,6 +182,7 @@ type Handler struct {
 	Store  findb.EntriesRunner
 	LN     *common.LeftNav
 	Global *common.Global
+	NoWifi bool
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -219,7 +220,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			BarGraph:     barGraph,
 			FormatStr:    formatStringLong(r.Form.Get("freq") == "Y"),
 			LeftNav:      leftnav,
-			GraphCode:    mustEmitGraphCode(barGraph),
+			GraphCode:    h.mustEmitGraphCode(barGraph),
 			Global:       h.Global,
 		}
 		http_util.WriteTemplate(w, kTemplate, v)
@@ -237,7 +238,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			BarGraph:     barGraph,
 			FormatStr:    formatStringLong(r.Form.Get("freq") == "Y"),
 			LeftNav:      leftnav,
-			GraphCode:    mustEmitGraphCode(barGraph),
+			GraphCode:    h.mustEmitGraphCode(barGraph),
 			Global:       h.Global,
 		}
 		http_util.WriteTemplate(w, kTemplate, v)
@@ -365,8 +366,9 @@ func (h *Handler) allCats(
 	return
 }
 
-func mustEmitGraphCode(barGraph *google_jsgraph.BarGraph) template.HTML {
-	if barGraph == nil {
+func (h *Handler) mustEmitGraphCode(
+	barGraph *google_jsgraph.BarGraph) template.HTML {
+	if h.NoWifi || barGraph == nil {
 		return ""
 	}
 	graphMap := map[string]google_jsgraph.Graph{"graph": barGraph}
