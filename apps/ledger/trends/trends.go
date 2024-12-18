@@ -12,7 +12,7 @@ import (
 	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/toolbox/date_util"
-	"github.com/keep94/toolbox/google_graph"
+	"github.com/keep94/toolbox/google_jsgraph"
 	"github.com/keep94/toolbox/http_util"
 	"html/template"
 	"net/http"
@@ -25,14 +25,9 @@ const (
 	kMaxPointsInGraph = 24
 )
 
-var (
-	kExpenseBarGraph = &google_graph.BarGraph{
-		Palette: []string{"660000"},
-		Scale:   2}
-	kIncomeBarGraph = &google_graph.BarGraph{
-		Palette: []string{"006600", "660000"},
-		Scale:   2}
-	kExpenseIncomeBarGraph = kIncomeBarGraph
+const (
+	kExpenseColor = "660000"
+	kIncomeColor  = "006600"
 )
 
 var (
@@ -69,8 +64,8 @@ var (
       </table>
     </td>
     <td>
-{{if .GraphUrl}}
-  <img src="{{.GraphUrl}}" alt="graph">
+{{if .BarGraph}}
+  <div id="graph" style="width: 500px; height: 300px;"></div>
 {{else}}
   &nbsp;
 {{end}}
@@ -108,8 +103,8 @@ var (
       </table>
     </td>
     <td>
-{{if .GraphUrl}}
-  <img src="{{.GraphUrl}}" alt="graph">
+{{if .BarGraph}}
+  <div id="graph" style="width: 600px; height: 300px;"></div>
 {{else}}
   &nbsp;
 {{end}}
@@ -124,6 +119,7 @@ var (
       <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" />
     {{end}}
     <link rel="stylesheet" type="text/css" href="/static/theme.css" />
+    {{.GraphCode}}
   </head>
   <body>
   {{.LeftNav}}
@@ -210,7 +206,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if caterr == nil {
-		points, graphUrl, cats, err := h.singleCat(cds, r.URL, cat, r.Form.Get("top") != "", start, end, r.Form.Get("freq") == "Y")
+		points, barGraph, cats, err := h.singleCat(cds, r.URL, cat, r.Form.Get("top") != "", start, end, r.Form.Get("freq") == "Y")
 		if err != nil {
 			http_util.ReportError(w, "Error reading database.", err)
 			return
@@ -220,14 +216,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 			Items:        points,
 			CatDetails:   cds.DetailsByIds(cats),
-			GraphUrl:     graphUrl,
+			BarGraph:     barGraph,
 			FormatStr:    formatStringLong(r.Form.Get("freq") == "Y"),
 			LeftNav:      leftnav,
+			GraphCode:    mustEmitGraphCode(barGraph),
 			Global:       h.Global,
 		}
 		http_util.WriteTemplate(w, kTemplate, v)
 	} else {
-		points, graphUrl, cats, err := h.allCats(cds, r.URL, start, end, r.Form.Get("freq") == "Y")
+		points, barGraph, cats, err := h.allCats(cds, r.URL, start, end, r.Form.Get("freq") == "Y")
 		if err != nil {
 			http_util.ReportError(w, "Error reading database.", err)
 			return
@@ -237,9 +234,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 			MultiItems:   points,
 			CatDetails:   cds.DetailsByIds(cats),
-			GraphUrl:     graphUrl,
+			BarGraph:     barGraph,
 			FormatStr:    formatStringLong(r.Form.Get("freq") == "Y"),
 			LeftNav:      leftnav,
+			GraphCode:    mustEmitGraphCode(barGraph),
 			Global:       h.Global,
 		}
 		http_util.WriteTemplate(w, kTemplate, v)
@@ -252,7 +250,7 @@ func (h *Handler) singleCat(
 	cat fin.Cat,
 	topOnly bool,
 	start, end time.Time,
-	isYearly bool) (points []*dataPoint, graphUrl *url.URL, cats fin.CatSet, err error) {
+	isYearly bool) (points []*dataPoint, barGraph *google_jsgraph.BarGraph, cats fin.CatSet, err error) {
 	// Only to see what the child categories are
 	ct := make(fin.CatTotals)
 	totals := createByPeriodTotaler(start, end, isYearly)
@@ -296,9 +294,15 @@ func (h *Handler) singleCat(
 			Data: points,
 			Fmt:  formatString(isYearly)}
 		if isIncome {
-			graphUrl = kIncomeBarGraph.GraphURL(g)
+			barGraph = &google_jsgraph.BarGraph{
+				Data:    g,
+				Palette: []string{kIncomeColor},
+			}
 		} else {
-			graphUrl = kExpenseBarGraph.GraphURL(g)
+			barGraph = &google_jsgraph.BarGraph{
+				Data:    g,
+				Palette: []string{kExpenseColor},
+			}
 		}
 	}
 	_, children := cds.RollUp(ct)
@@ -311,7 +315,7 @@ func (h *Handler) allCats(
 	cds categories.CatDetailStore,
 	thisUrl *url.URL,
 	start, end time.Time,
-	isYearly bool) (points []*multiDataPoint, graphUrl *url.URL, cats fin.CatSet, err error) {
+	isYearly bool) (points []*multiDataPoint, barGraph *google_jsgraph.BarGraph, cats fin.CatSet, err error) {
 	// Only to see what the child categories are
 	ct := make(fin.CatTotals)
 	expenseTotals := createByPeriodTotaler(start, end, isYearly)
@@ -350,12 +354,23 @@ func (h *Handler) allCats(
 		g := &multiGraphable{
 			Data: points,
 			Fmt:  formatString(isYearly)}
-		graphUrl = kExpenseIncomeBarGraph.GraphURL2D(g)
+		barGraph = &google_jsgraph.BarGraph{
+			Data:    g,
+			Palette: []string{kIncomeColor, kExpenseColor},
+		}
 	}
 	_, children := cds.RollUp(ct)
 	cats = fin.CatSet{fin.Expense: true, fin.Income: true}
 	cats.AddSet(children[fin.Expense]).AddSet(children[fin.Income])
 	return
+}
+
+func mustEmitGraphCode(barGraph *google_jsgraph.BarGraph) template.HTML {
+	if barGraph == nil {
+		return ""
+	}
+	graphMap := map[string]google_jsgraph.Graph{"graph": barGraph}
+	return google_jsgraph.MustEmit(graphMap)
 }
 
 func formatString(isYearly bool) string {
@@ -405,10 +420,21 @@ type graphable struct {
 	Fmt  string
 }
 
-func (g *graphable) Len() int           { return len(g.Data) }
-func (g *graphable) Label(i int) string { return g.Data[i].Date.Format(g.Fmt) }
-func (g *graphable) Value(i int) int64  { return g.Data[i].Value }
-func (g *graphable) Title() string      { return "" }
+func (g *graphable) XLen() int { return len(g.Data) }
+
+func (g *graphable) YLen() int { return 1 }
+
+func (g *graphable) XLabel(i int) string {
+	return g.Data[i].Date.Format(g.Fmt)
+}
+
+func (g *graphable) YLabel(i int) string { return "amount" }
+
+func (g *graphable) XTitle() string { return "period" }
+
+func (g *graphable) Value(x, y int) float64 {
+	return max(float64(g.Data[x].Value)/100.0, 0.0)
+}
 
 type multiDataPoint struct {
 	Date         time.Time
@@ -423,15 +449,12 @@ type multiGraphable struct {
 	Fmt  string
 }
 
-func (g *multiGraphable) XLen() int           { return len(g.Data) }
-func (g *multiGraphable) YLen() int           { return 2 }
-func (g *multiGraphable) XLabel(i int) string { return g.Data[i].Date.Format(g.Fmt) }
+func (g *multiGraphable) XLen() int { return len(g.Data) }
 
-func (g *multiGraphable) Value(x, y int) int64 {
-	if y == 0 {
-		return g.Data[x].IncomeValue
-	}
-	return g.Data[x].ExpenseValue
+func (g *multiGraphable) YLen() int { return 2 }
+
+func (g *multiGraphable) XLabel(i int) string {
+	return g.Data[i].Date.Format(g.Fmt)
 }
 
 func (g *multiGraphable) YLabel(y int) string {
@@ -441,16 +464,29 @@ func (g *multiGraphable) YLabel(y int) string {
 	return "Expense"
 }
 
+func (g *multiGraphable) XTitle() string { return "period" }
+
+func (g *multiGraphable) Value(x, y int) float64 {
+	var result float64
+	if y == 0 {
+		result = float64(g.Data[x].IncomeValue) / 100.0
+	} else {
+		result = float64(g.Data[x].ExpenseValue) / 100.0
+	}
+	return max(result, 0.0)
+}
+
 type view struct {
 	http_util.Values
 	common.CatDisplayer
 	Items      []*dataPoint
 	MultiItems []*multiDataPoint
-	GraphUrl   *url.URL
+	BarGraph   *google_jsgraph.BarGraph
 	CatDetails []categories.CatDetail
 	Error      error
 	FormatStr  string
 	LeftNav    template.HTML
+	GraphCode  template.HTML
 	Global     *common.Global
 }
 

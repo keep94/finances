@@ -10,7 +10,7 @@ import (
 	"github.com/keep94/finances/fin/consumers"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/toolbox/date_util"
-	"github.com/keep94/toolbox/google_graph"
+	"github.com/keep94/toolbox/google_jsgraph"
 	"github.com/keep94/toolbox/http_util"
 	"html/template"
 	"net/http"
@@ -25,11 +25,10 @@ const (
 )
 
 var (
-	kPieGraph = &google_graph.PieGraph{
-		Palette: []string{
-			"000066", "666600", "660000", "006600", "660066",
-			"006666", "333333", "6666CC", "CCCC66", "CC6666",
-			"66CC66", "CC66CC", "66CCCC", "999999"}}
+	kPieGraphColors = []string{
+		"000066", "666600", "660000", "006600", "660066",
+		"006666", "333333", "6666CC", "CCCC66", "CC6666",
+		"66CC66", "CC66CC", "66CCCC", "999999"}
 )
 
 var (
@@ -71,8 +70,8 @@ var (
       </table>
     </td>
     <td>
-{{with .GraphURL .GraphItems}}
-  <img src="{{.}}" alt="graph">
+{{if .HasGraph}}
+  <div id="{{.DivName}}" style="width: 600px; height: 600px;"></div>
 {{else}}
   &nbsp;
 {{end}}
@@ -87,6 +86,7 @@ var (
       <link rel="shortcut icon" href="/images/favicon.ico" type="image/x-icon" />
     {{end}}
     <link rel="stylesheet" type="text/css" href="/static/theme.css" />
+    {{.GraphCode}}
   </head>
   <body>
   {{.LeftNav}}
@@ -186,14 +186,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Unrolled:  ct,
 		Totals:    rolledCt,
 		Children:  children,
-		Grapher:   kPieGraph}
+		Colors:    kPieGraphColors}
 	catsInDropDown := fin.CatSet{fin.Expense: true, fin.Income: true}
 	var displaySets []*dataSet
 	if caterr == nil {
-		displaySets = []*dataSet{builder.Build(cat)}
+		displaySets = []*dataSet{builder.Build(cat, "expenses")}
 		catsInDropDown.AddSet(children[cat])
 	} else {
-		displaySets = []*dataSet{builder.Build(fin.Expense), builder.Build(fin.Income)}
+		displaySets = []*dataSet{builder.Build(fin.Expense, "expenses"), builder.Build(fin.Income, "income")}
 		catsInDropDown.AddSet(children[fin.Expense]).AddSet(children[fin.Income])
 	}
 	v := &view{
@@ -202,6 +202,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Sets:         displaySets,
 		CatDetails:   cds.DetailsByIds(catsInDropDown),
 		LeftNav:      leftnav,
+		GraphCode:    mustEmitGraphCode(displaySets),
 		Global:       h.Global}
 
 	http_util.WriteTemplate(w, kTemplate, v)
@@ -216,10 +217,14 @@ type dataPoint struct {
 
 type graphable []*dataPoint
 
-func (g graphable) Len() int           { return len(g) }
-func (g graphable) Label(i int) string { return g[i].Name }
-func (g graphable) Value(i int) int64  { return g[i].Value }
-func (g graphable) Title() string      { return "" }
+func (g graphable) XLen() int           { return len(g) }
+func (g graphable) YLen() int           { return 1 }
+func (g graphable) XLabel(i int) string { return g[i].Name }
+func (g graphable) YLabel(i int) string { return "amount" }
+func (g graphable) XTitle() string      { return "category" }
+func (g graphable) Value(x, y int) float64 {
+	return float64(g[x].Value) / 100.0
+}
 
 type dataSet struct {
 	Name       string
@@ -227,7 +232,29 @@ type dataSet struct {
 	Total      int64
 	Items      []*dataPoint
 	GraphItems graphable
-	google_graph.Grapher
+	Colors     []string
+	DivName    string
+}
+
+func (d *dataSet) HasGraph() bool {
+	return d.GraphItems.XLen() > 0
+}
+
+func (d *dataSet) RegisterGraph(graphs map[string]google_jsgraph.Graph) {
+	if d.HasGraph() {
+		graphs[d.DivName] = &google_jsgraph.PieGraph{
+			Data:    d.GraphItems,
+			Palette: d.Colors,
+		}
+	}
+}
+
+func mustEmitGraphCode(sets []*dataSet) template.HTML {
+	graphs := make(map[string]google_jsgraph.Graph, len(sets))
+	for _, s := range sets {
+		s.RegisterGraph(graphs)
+	}
+	return google_jsgraph.MustEmit(graphs)
 }
 
 type view struct {
@@ -237,6 +264,7 @@ type view struct {
 	CatDetails []categories.CatDetail
 	Error      error
 	LeftNav    template.HTML
+	GraphCode  template.HTML
 	Global     *common.Global
 }
 
@@ -247,17 +275,18 @@ type dataSetBuilder struct {
 	Unrolled  fin.CatTotals
 	Totals    fin.CatTotals
 	Children  map[fin.Cat]fin.CatSet
-	Grapher   google_graph.Grapher
+	Colors    []string
 }
 
-func (b *dataSetBuilder) Build(cat fin.Cat) *dataSet {
+func (b *dataSetBuilder) Build(cat fin.Cat, divName string) *dataSet {
 	childCats := b.Children[cat]
 	childCatLength := len(childCats)
 	result := &dataSet{
 		Name:    b.Cds.DetailById(cat).FullName(),
 		Url:     http_util.WithParams(b.ListUrl, "cat", cat.String()),
 		Items:   make([]*dataPoint, childCatLength+1),
-		Grapher: b.Grapher}
+		Colors:  b.Colors,
+		DivName: divName}
 	isIncome := cat.Type == fin.IncomeCat
 	idx := 0
 	for childCat, ok := range childCats {
