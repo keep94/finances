@@ -290,7 +290,7 @@ func (h *Handler) singleCat(
 		Totals:    totals,
 		IsIncome:  isIncome}
 	points = builder.Build()
-	if len(points) <= kMaxPointsInGraph {
+	if len(points) > 0 && len(points) <= kMaxPointsInGraph {
 		g := &graphable{
 			Data: points,
 			Fmt:  formatString(isYearly)}
@@ -351,7 +351,7 @@ func (h *Handler) allCats(
 		ExpenseTotals: expenseTotals,
 		IncomeTotals:  incomeTotals}
 	points = builder.Build()
-	if len(points) <= kMaxPointsInGraph {
+	if len(points) > 0 && len(points) <= kMaxPointsInGraph {
 		g := &multiGraphable{
 			Data: points,
 			Fmt:  formatString(isYearly)}
