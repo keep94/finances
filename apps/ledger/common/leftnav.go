@@ -127,9 +127,9 @@ func (l *LeftNav) Generate(
 		return ""
 	}
 	now := date_util.TimeToDate(l.Clock.Now())
+	currentYear := now.Year()
 	// Include today!
 	now = now.AddDate(0, 0, 1)
-	year := now.Year()
 	oneMonthAgo := now.AddDate(0, -1, 0)
 	oneYearAgo := now.AddDate(-1, 0, 0)
 	var sb strings.Builder
@@ -145,7 +145,7 @@ func (l *LeftNav) Generate(
 			"ed", now.Format(date_util.YMDFormat)),
 		EnvelopeUrl: http_util.NewUrl(
 			"/fin/envelopes",
-			"year", strconv.Itoa(year)),
+			"year", strconv.Itoa(currentYear)),
 		UserName:  session.User.Name,
 		LastLogin: lastLoginStr,
 		sel:       sel})
