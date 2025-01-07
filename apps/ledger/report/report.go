@@ -187,6 +187,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Unrolled:  ct,
 		Totals:    rolledCt,
 		Children:  children,
+		HideGraph: h.NoWifi,
 		Colors:    kPieGraphColors}
 	catsInDropDown := fin.CatSet{fin.Expense: true, fin.Income: true}
 	var displaySets []*dataSet
@@ -203,21 +204,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Sets:         displaySets,
 		CatDetails:   cds.DetailsByIds(catsInDropDown),
 		LeftNav:      leftnav,
-		GraphCode:    h.mustEmitGraphCode(displaySets),
+		GraphCode:    mustEmitGraphCode(displaySets),
 		Global:       h.Global}
 
 	http_util.WriteTemplate(w, kTemplate, v)
-}
-
-func (h *Handler) mustEmitGraphCode(sets []*dataSet) template.HTML {
-	if h.NoWifi {
-		return ""
-	}
-	graphs := make(map[string]google_jsgraph.Graph, len(sets))
-	for _, s := range sets {
-		s.RegisterGraph(graphs)
-	}
-	return google_jsgraph.MustEmit(graphs)
 }
 
 type dataPoint struct {
@@ -245,11 +235,12 @@ type dataSet struct {
 	Items      []*dataPoint
 	GraphItems graphable
 	Colors     []string
+	HideGraph  bool
 	DivName    string
 }
 
 func (d *dataSet) HasGraph() bool {
-	return d.GraphItems.XLen() > 0
+	return !d.HideGraph && d.GraphItems.XLen() > 0
 }
 
 func (d *dataSet) RegisterGraph(graphs map[string]google_jsgraph.Graph) {
@@ -279,6 +270,7 @@ type dataSetBuilder struct {
 	Unrolled  fin.CatTotals
 	Totals    fin.CatTotals
 	Children  map[fin.Cat]fin.CatSet
+	HideGraph bool
 	Colors    []string
 }
 
@@ -286,11 +278,12 @@ func (b *dataSetBuilder) Build(cat fin.Cat, divName string) *dataSet {
 	childCats := b.Children[cat]
 	childCatLength := len(childCats)
 	result := &dataSet{
-		Name:    b.Cds.DetailById(cat).FullName(),
-		Url:     http_util.WithParams(b.ListUrl, "cat", cat.String()),
-		Items:   make([]*dataPoint, childCatLength+1),
-		Colors:  b.Colors,
-		DivName: divName}
+		Name:      b.Cds.DetailById(cat).FullName(),
+		Url:       http_util.WithParams(b.ListUrl, "cat", cat.String()),
+		Items:     make([]*dataPoint, childCatLength+1),
+		Colors:    b.Colors,
+		HideGraph: b.HideGraph,
+		DivName:   divName}
 	isIncome := cat.Type == fin.IncomeCat
 	idx := 0
 	for childCat, ok := range childCats {
@@ -357,6 +350,14 @@ func getDateRange(r *http.Request) (start, end time.Time, err error) {
 		return
 	}
 	return
+}
+
+func mustEmitGraphCode(sets []*dataSet) template.HTML {
+	graphs := make(map[string]google_jsgraph.Graph)
+	for _, s := range sets {
+		s.RegisterGraph(graphs)
+	}
+	return google_jsgraph.MustEmit(graphs)
 }
 
 func init() {

@@ -220,7 +220,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			BarGraph:     barGraph,
 			FormatStr:    formatStringLong(r.Form.Get("freq") == "Y"),
 			LeftNav:      leftnav,
-			GraphCode:    h.mustEmitGraphCode(barGraph),
+			GraphCode:    mustEmitGraphCode(barGraph),
 			Global:       h.Global,
 		}
 		http_util.WriteTemplate(w, kTemplate, v)
@@ -238,7 +238,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			BarGraph:     barGraph,
 			FormatStr:    formatStringLong(r.Form.Get("freq") == "Y"),
 			LeftNav:      leftnav,
-			GraphCode:    h.mustEmitGraphCode(barGraph),
+			GraphCode:    mustEmitGraphCode(barGraph),
 			Global:       h.Global,
 		}
 		http_util.WriteTemplate(w, kTemplate, v)
@@ -290,7 +290,7 @@ func (h *Handler) singleCat(
 		Totals:    totals,
 		IsIncome:  isIncome}
 	points = builder.Build()
-	if len(points) > 0 && len(points) <= kMaxPointsInGraph {
+	if !h.NoWifi && len(points) > 0 && len(points) <= kMaxPointsInGraph {
 		g := &graphable{
 			Data: points,
 			Fmt:  formatString(isYearly)}
@@ -351,7 +351,7 @@ func (h *Handler) allCats(
 		ExpenseTotals: expenseTotals,
 		IncomeTotals:  incomeTotals}
 	points = builder.Build()
-	if len(points) > 0 && len(points) <= kMaxPointsInGraph {
+	if !h.NoWifi && len(points) > 0 && len(points) <= kMaxPointsInGraph {
 		g := &multiGraphable{
 			Data: points,
 			Fmt:  formatString(isYearly)}
@@ -366,9 +366,9 @@ func (h *Handler) allCats(
 	return
 }
 
-func (h *Handler) mustEmitGraphCode(
+func mustEmitGraphCode(
 	barGraph *google_jsgraph.BarGraph) template.HTML {
-	if h.NoWifi || barGraph == nil {
+	if barGraph == nil {
 		return ""
 	}
 	graphMap := map[string]google_jsgraph.Graph{"graph": barGraph}
