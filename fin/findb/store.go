@@ -413,32 +413,32 @@ func SkipRecurringEntry(
 // ApplyRecurringEntry advances the recurring entry with given id
 // creating one new entry for it.
 // t is the database transaction and must be non-nil.
-// Returns true if the entry was applied or false if the NumLeft field
+// Returns id of created entry or 0 if the NumLeft field
 // has already reached 0.
 func ApplyRecurringEntry(
 	t db.Transaction,
 	store RecurringEntryApplier,
-	id int64) (bool, error) {
+	id int64) (int64, error) {
 	if t == nil {
 		panic(kNonNilTransactionRequired)
 	}
 	var entry fin.RecurringEntry
 	if err := store.RecurringEntryById(t, id, &entry); err != nil {
-		return false, err
+		return 0, err
 	}
 	var newEntry fin.Entry
 	// If we didn't advance we are done
 	if !entry.AdvanceOnce(&newEntry) {
-		return false, nil
+		return 0, nil
 	}
 	if err := store.UpdateRecurringEntry(t, &entry); err != nil {
-		return false, err
+		return 0, err
 	}
 	changes := &EntryChanges{Adds: []*fin.Entry{&newEntry}}
 	if err := store.DoEntryChanges(t, changes); err != nil {
-		return false, err
+		return 0, err
 	}
-	return true, nil
+	return newEntry.Id, nil
 }
 
 // ApplyRecurringEntriesDryRun returns out how many new entries would be

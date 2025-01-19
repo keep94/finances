@@ -137,7 +137,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else if http_util.HasParam(r.Form, "skip") {
 			message, postErr = h.skipEntry(store, rid)
 		} else if http_util.HasParam(r.Form, "apply") {
-			message, postErr = h.applyEntry(store, rid)
+			var newEntryId int64
+			newEntryId, postErr = h.applyEntry(store, rid)
+			if postErr == nil {
+				newEntryUrl := http_util.NewUrl(
+					"/fin/single",
+					"id", strconv.FormatInt(newEntryId, 10),
+					"prev", r.URL.String(),
+					"sel", selecter.String())
+				http_util.Redirect(w, r, newEntryUrl.String())
+				return
+			}
 		}
 	}
 	cds, _ := h.Cdc.Get(nil)
@@ -223,16 +233,13 @@ func (h *Handler) skipEntry(
 
 func (h *Handler) applyEntry(
 	store findb.RecurringEntryApplier,
-	rid int64) (message string, err error) {
-	var applied bool
+	rid int64) (newEntryId int64, err error) {
 	err = h.Doer.Do(func(t db.Transaction) error {
 		var err error
-		applied, err = findb.ApplyRecurringEntry(t, store, rid)
+		newEntryId, err = findb.ApplyRecurringEntry(t, store, rid)
 		return err
 	})
-	if applied {
-		message = "Recurring entry aplied."
-	} else if err == nil {
+	if err == nil && newEntryId == 0 {
 		err = errors.New("Cannot advance. None left.")
 	}
 	return

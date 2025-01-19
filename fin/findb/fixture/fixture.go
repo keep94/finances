@@ -539,16 +539,16 @@ func (f EntryAccountFixture) ApplyRecurringEntries(
 		4, fin.Months, &cp, -1)
 
 	// Apply finiteId once advancing it by 1 month
-	var applied bool
+	var entryId int64
 	err := f.Doer.Do(func(t db.Transaction) error {
 		var err error
-		applied, err = findb.ApplyRecurringEntry(t, store, finiteId)
+		entryId, err = findb.ApplyRecurringEntry(t, store, finiteId)
 		return err
 	})
 	if err != nil {
 		t.Fatalf("Error applying recurring entry.")
 	}
-	if !applied {
+	if entryId == 0 {
 		t.Error("Expected finiteId entry to be applied.")
 	}
 
@@ -569,13 +569,13 @@ func (f EntryAccountFixture) ApplyRecurringEntries(
 	// Applying newYearId should return false
 	err = f.Doer.Do(func(t db.Transaction) error {
 		var err error
-		applied, err = findb.ApplyRecurringEntry(t, store, newYearId)
+		entryId, err = findb.ApplyRecurringEntry(t, store, newYearId)
 		return err
 	})
 	if err != nil {
 		t.Fatalf("Error applying recurring entry.")
 	}
-	if applied {
+	if entryId != 0 {
 		t.Error("Expected newYearId entry not to be applied.")
 	}
 
