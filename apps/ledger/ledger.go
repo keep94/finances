@@ -41,6 +41,7 @@ import (
 	csqlite "github.com/keep94/finances/fin/categories/categoriesdb/for_sqlite"
 	"github.com/keep94/finances/fin/findb/for_sqlite"
 	"github.com/keep94/ramstore"
+	"github.com/keep94/toolbox/build"
 	"github.com/keep94/toolbox/date_util"
 	"github.com/keep94/toolbox/db"
 	"github.com/keep94/toolbox/db/sqlite3_db"
@@ -126,7 +127,12 @@ func main() {
 			Recipients:         kLockoutRecipients,
 			PopularityLookback: fPopularityLookback,
 			Global:             global})
-	ln := &common.LeftNav{Cdc: kReadOnlyCatDetailCache, Clock: kClock}
+	version, _ := build.MainVersion()
+	ln := &common.LeftNav{
+		Cdc:     kReadOnlyCatDetailCache,
+		Clock:   kClock,
+		BuildId: build.BuildId(version),
+	}
 	http.Handle(
 		"/fin/", &authHandler{mux})
 	mux.Handle(

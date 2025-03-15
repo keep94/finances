@@ -17,6 +17,9 @@ import (
 var (
 	kLeftNavTemplateSpec = `
 <div class="leftnav">
+{{with .BuildId}}
+    <b>Build {{.}}</b><br><br>
+{{end}}
 <b>{{.UserName}}</b><br>
 {{.LastLogin}}<br>
 <br>
@@ -105,8 +108,9 @@ func SelectNone() Selecter            { return Selecter{} }
 
 // LeftNav is for creating the left navigation bar.
 type LeftNav struct {
-	Cdc   categoriesdb.Getter
-	Clock date_util.Clock
+	Cdc     categoriesdb.Getter
+	Clock   date_util.Clock
+	BuildId string
 }
 
 // Generate generates the html for the left navigation bar including the div
@@ -135,6 +139,7 @@ func (l *LeftNav) Generate(
 	var sb strings.Builder
 	http_util.WriteTemplate(&sb, kLeftNavTemplate, &view{
 		CatDetailStore: cds,
+		BuildId:        l.BuildId,
 		ReportUrl: http_util.NewUrl(
 			"/fin/report",
 			"sd", oneMonthAgo.Format(date_util.YMDFormat),
@@ -155,6 +160,7 @@ func (l *LeftNav) Generate(
 type view struct {
 	AccountLinker
 	categories.CatDetailStore
+	BuildId     string
 	ReportUrl   *url.URL
 	TrendUrl    *url.URL
 	EnvelopeUrl *url.URL
