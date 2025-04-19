@@ -34,7 +34,9 @@ var (
 <body>
 {{.LeftNav}}
 <div class="main">
-<h2>{{.AccountName}}</h2>
+{{if .AccountId}}
+    <h2>{{.AccountName}}: {{FormatUSD .Balance}}</h2>
+{{end}}
 {{if .EntriesToAddCount}}
   <form method="POST">
     <input type="hidden" name="xsrf" value="{{.Xsrf}}">
@@ -46,6 +48,8 @@ var (
 <a href="{{.NewEntryLink .AccountId}}">New Recurring Entry</a>
 {{if .AccountId}}
 <a href="{{.AccountLink .AccountId}}">Normal View</a><br><br>
+{{else}}
+<br><br>
 {{end}}
 {{if .Error}}
   <span class="error">{{.Error.Error}}</span>
@@ -101,6 +105,7 @@ var (
 )
 
 type Store interface {
+	findb.AccountByIdRunner
 	findb.RecurringEntryByIdRunner
 	findb.RecurringEntriesApplier
 }
@@ -151,7 +156,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	cds, _ := h.Cdc.Get(nil)
+	var account fin.Account
 	var entries []*fin.RecurringEntry
+	var count int
+	currentDate := date_util.TimeToDate(h.Clock.Now())
 	consumer := consume2.AppendPtrsTo(&entries)
 	if acctId > 0 {
 		consumer = consume2.MaybeMap(
@@ -161,17 +169,23 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return entry, ok
 			})
 	}
-	err := store.RecurringEntries(nil, consumer)
+	err := h.Doer.Do(func(t db.Transaction) error {
+		if acctId > 0 {
+			err := store.AccountById(t, acctId, &account)
+			if err != nil {
+				return err
+			}
+		}
+		var err error
+		count, err = findb.ApplyRecurringEntriesDryRun(
+			t, store, acctId, currentDate)
+		if err != nil {
+			return err
+		}
+		return store.RecurringEntries(t, consumer)
+	})
 	if err != nil {
 		http_util.ReportError(w, "Error reading database.", err)
-		return
-	}
-	currentDate := date_util.TimeToDate(h.Clock.Now())
-	count, err := findb.ApplyRecurringEntriesDryRun(
-		nil, store, acctId, currentDate)
-	if err != nil {
-		http_util.ReportError(
-			w, "Error doing apply recurring entries dry run.", err)
 		return
 	}
 	var accountName string
@@ -188,6 +202,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				Sel: selecter},
 			Values:            entries,
 			AccountId:         acctId,
+			Balance:           account.Balance,
 			Today:             currentDate,
 			EntriesToAddCount: count,
 			AccountName:       accountName,
@@ -251,6 +266,7 @@ type view struct {
 	common.AccountLinker
 	Values            []*fin.RecurringEntry
 	AccountId         int64
+	Balance           int64
 	Today             time.Time
 	EntriesToAddCount int
 	Error             error
