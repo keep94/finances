@@ -184,6 +184,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return store.RecurringEntries(t, consumer)
 	})
+	if err == findb.NoSuchId {
+		fmt.Fprintln(w, "No such account.")
+		return
+	}
 	if err != nil {
 		http_util.ReportError(w, "Error reading database.", err)
 		return
