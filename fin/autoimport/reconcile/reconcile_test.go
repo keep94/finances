@@ -1,22 +1,59 @@
 package reconcile
 
 import (
-	"github.com/keep94/finances/fin"
-	"github.com/keep94/toolbox/date_util"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/keep94/finances/fin"
+	"github.com/keep94/toolbox/date_util"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
-	kNoCheckNo = AmountCheckNo{-123, ""}
+	kNoCheckNo = amountCheckNo{-123, ""}
 )
+
+func TestReconcile(t *testing.T) {
+	e1 := fin.Entry{
+		Date:       date_util.YMD(2013, 4, 1),
+		CheckNo:    "123",
+		CatPayment: fin.NewCatPayment(fin.Expense, 924, true, 0)}
+	e2 := fin.Entry{
+		Date:       date_util.YMD(2013, 4, 3),
+		CheckNo:    "124",
+		CatPayment: fin.NewCatPayment(fin.Expense, 924, true, 0)}
+	e3 := fin.Entry{
+		Date:       date_util.YMD(2013, 4, 9),
+		CheckNo:    "125",
+		CatPayment: fin.NewCatPayment(fin.Expense, 924, true, 0)}
+
+	u1 := &fin.Entry{
+		Id:         1357,
+		Date:       date_util.YMD(2013, 4, 2),
+		CheckNo:    "124",
+		CatPayment: fin.NewCatPayment(fin.Expense, 924, false, 0)}
+	u2 := &fin.Entry{
+		Id:         1359,
+		Date:       date_util.YMD(2013, 4, 9),
+		CheckNo:    "125",
+		CatPayment: fin.NewCatPayment(fin.Expense, 924, false, 0)}
+
+	fromBank := []fin.Entry{e1, e2, e3}
+	unreconciled := []*fin.Entry{u1, u2}
+
+	Reconcile(unreconciled, 7, fromBank)
+
+	assert.Equal(t, int64(0), fromBank[0].Id)
+	assert.Equal(t, int64(1357), fromBank[1].Id)
+	assert.Equal(t, int64(1359), fromBank[2].Id)
+}
 
 func TestReconcileSingleYes(t *testing.T) {
 	b1 := newEntry(0, date_util.YMD(2013, 4, 8))
 	u1 := newEntry(1, date_util.YMD(2013, 4, 1))
-	bank := ByAmountCheckNo{kNoCheckNo: {b1}}
-	unreconciled := ByAmountCheckNo{kNoCheckNo: {u1}}
+	bank := byAmountCheckNo{kNoCheckNo: {b1}}
+	unreconciled := byAmountCheckNo{kNoCheckNo: {u1}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 1 {
 		t.Errorf("Expected 1, got %v", output)
@@ -26,8 +63,8 @@ func TestReconcileSingleYes(t *testing.T) {
 func TestReconcileSingleYes2(t *testing.T) {
 	b1 := newEntry(0, date_util.YMD(2013, 4, 1))
 	u1 := newEntry(1, date_util.YMD(2013, 4, 1))
-	bank := ByAmountCheckNo{kNoCheckNo: {b1}}
-	unreconciled := ByAmountCheckNo{kNoCheckNo: {u1}}
+	bank := byAmountCheckNo{kNoCheckNo: {b1}}
+	unreconciled := byAmountCheckNo{kNoCheckNo: {u1}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 1 {
 		t.Errorf("Expected 1, got %v", output)
@@ -37,8 +74,8 @@ func TestReconcileSingleYes2(t *testing.T) {
 func TestReconcileSingleNo1(t *testing.T) {
 	b1 := newEntry(0, date_util.YMD(2013, 3, 31))
 	u1 := newEntry(1, date_util.YMD(2013, 4, 1))
-	bank := ByAmountCheckNo{kNoCheckNo: {b1}}
-	unreconciled := ByAmountCheckNo{kNoCheckNo: {u1}}
+	bank := byAmountCheckNo{kNoCheckNo: {b1}}
+	unreconciled := byAmountCheckNo{kNoCheckNo: {u1}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 0 {
 		t.Errorf("Expected 0, got %v", output)
@@ -48,8 +85,8 @@ func TestReconcileSingleNo1(t *testing.T) {
 func TestReconcileSingleNo2(t *testing.T) {
 	b1 := newEntry(0, date_util.YMD(2013, 4, 9))
 	u1 := newEntry(1, date_util.YMD(2013, 4, 1))
-	bank := ByAmountCheckNo{kNoCheckNo: {b1}}
-	unreconciled := ByAmountCheckNo{kNoCheckNo: {u1}}
+	bank := byAmountCheckNo{kNoCheckNo: {b1}}
+	unreconciled := byAmountCheckNo{kNoCheckNo: {u1}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 0 {
 		t.Errorf("Expected 0, got %v", output)
@@ -58,7 +95,7 @@ func TestReconcileSingleNo2(t *testing.T) {
 
 func TestB1U0(t *testing.T) {
 	b1 := newEntry(0, date_util.YMD(2013, 4, 9))
-	bank := ByAmountCheckNo{kNoCheckNo: {b1}}
+	bank := byAmountCheckNo{kNoCheckNo: {b1}}
 	bank.Reconcile(nil, 7)
 	if output := b1.Id; output != 0 {
 		t.Errorf("Expected 0, got %v", output)
@@ -69,8 +106,8 @@ func TestReconcileB2U1(t *testing.T) {
 	b1 := newEntry(0, date_util.YMD(2013, 4, 3))
 	b2 := newEntry(0, date_util.YMD(2013, 4, 1))
 	u1 := newEntry(1, date_util.YMD(2013, 4, 1))
-	bank := ByAmountCheckNo{kNoCheckNo: {b1, b2}}
-	unreconciled := ByAmountCheckNo{kNoCheckNo: {u1}}
+	bank := byAmountCheckNo{kNoCheckNo: {b1, b2}}
+	unreconciled := byAmountCheckNo{kNoCheckNo: {u1}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 0 {
 		t.Errorf("Expected 0, got %v", output)
@@ -84,8 +121,8 @@ func TestReconcileB2U1_2(t *testing.T) {
 	b1 := newEntry(0, date_util.YMD(2013, 4, 3))
 	b2 := newEntry(0, date_util.YMD(2013, 3, 31))
 	u1 := newEntry(1, date_util.YMD(2013, 4, 1))
-	bank := ByAmountCheckNo{kNoCheckNo: {b1, b2}}
-	unreconciled := ByAmountCheckNo{kNoCheckNo: {u1}}
+	bank := byAmountCheckNo{kNoCheckNo: {b1, b2}}
+	unreconciled := byAmountCheckNo{kNoCheckNo: {u1}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 1 {
 		t.Errorf("Expected 1, got %v", output)
@@ -99,8 +136,8 @@ func TestReconcileB1U2(t *testing.T) {
 	b1 := newEntry(0, date_util.YMD(2013, 4, 3))
 	u2 := newEntry(2, date_util.YMD(2013, 4, 3))
 	u3 := newEntry(3, date_util.YMD(2013, 4, 1))
-	bank := ByAmountCheckNo{kNoCheckNo: {b1}}
-	unreconciled := ByAmountCheckNo{kNoCheckNo: {u2, u3}}
+	bank := byAmountCheckNo{kNoCheckNo: {b1}}
+	unreconciled := byAmountCheckNo{kNoCheckNo: {u2, u3}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 2 {
 		t.Errorf("Expected 2, got %v", output)
@@ -112,8 +149,8 @@ func TestReconcileB2U2(t *testing.T) {
 	b2 := newEntry(0, date_util.YMD(2013, 4, 7))
 	u2 := newEntry(2, date_util.YMD(2013, 4, 8))
 	u3 := newEntry(3, date_util.YMD(2013, 4, 6))
-	bank := ByAmountCheckNo{kNoCheckNo: {b1, b2}}
-	unreconciled := ByAmountCheckNo{kNoCheckNo: {u2, u3}}
+	bank := byAmountCheckNo{kNoCheckNo: {b1, b2}}
+	unreconciled := byAmountCheckNo{kNoCheckNo: {u2, u3}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 2 {
 		t.Errorf("Expected 2, got %v", output)
@@ -134,8 +171,8 @@ func TestReconcileB4U4(t *testing.T) {
 	u4 := newEntry(4, date_util.YMD(2013, 4, 1))
 	u2 := newEntry(2, date_util.YMD(2013, 3, 24))
 
-	bank := ByAmountCheckNo{kNoCheckNo: {b1, b2, b3, b4}}
-	unreconciled := ByAmountCheckNo{kNoCheckNo: {u8, u6, u4, u2}}
+	bank := byAmountCheckNo{kNoCheckNo: {b1, b2, b3, b4}}
+	unreconciled := byAmountCheckNo{kNoCheckNo: {u8, u6, u4, u2}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 8 {
 		t.Errorf("Expected 8, got %v", output)
@@ -155,8 +192,8 @@ func TestReconcileCheckYes(t *testing.T) {
 	b1 := newEntry(0, date_util.YMD(2013, 4, 9))
 	u1 := newEntry(8, date_util.YMD(2013, 4, 1))
 
-	bank := ByAmountCheckNo{AmountCheckNo{-123, "123"}: {b1}}
-	unreconciled := ByAmountCheckNo{AmountCheckNo{-123, "123"}: {u1}}
+	bank := byAmountCheckNo{amountCheckNo{-123, "123"}: {b1}}
+	unreconciled := byAmountCheckNo{amountCheckNo{-123, "123"}: {u1}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 8 {
 		t.Errorf("Expected 8, got %v", output)
@@ -167,8 +204,8 @@ func TestReconcileCheckNo(t *testing.T) {
 	b1 := newEntry(0, date_util.YMD(2013, 4, 9))
 	u1 := newEntry(8, date_util.YMD(2013, 4, 10))
 
-	bank := ByAmountCheckNo{AmountCheckNo{-123, "123"}: {b1}}
-	unreconciled := ByAmountCheckNo{AmountCheckNo{-123, "123"}: {u1}}
+	bank := byAmountCheckNo{amountCheckNo{-123, "123"}: {b1}}
+	unreconciled := byAmountCheckNo{amountCheckNo{-123, "123"}: {u1}}
 	bank.Reconcile(unreconciled, 7)
 	if output := b1.Id; output != 0 {
 		t.Errorf("Expected 0, got %v", output)
@@ -188,15 +225,15 @@ func TestNew(t *testing.T) {
 		Date:       date_util.YMD(2013, 4, 9),
 		CheckNo:    "123",
 		CatPayment: fin.NewCatPayment(fin.Expense, 924, true, 0)}
-	bank := New([]*fin.Entry{e1, e2, e3})
-	entries := bank[AmountCheckNo{-924, "123"}]
+	bank := newByAmountCheckNo([]*fin.Entry{e1, e2, e3})
+	entries := bank[amountCheckNo{-924, "123"}]
 	if entries[0] != e3 || entries[1] != e2 || entries[2] != e1 {
 		t.Error("Entries added out of order.")
 	}
 }
 
 func TestGetChanges(t *testing.T) {
-	entries := []*fin.Entry{
+	entries := []fin.Entry{
 		{Name: "Add1"},
 		{Id: 924,
 			Name:       "Update1",

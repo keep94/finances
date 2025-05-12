@@ -146,11 +146,10 @@ type QfxBatch struct {
 	QfxEntries []*QfxEntry
 }
 
-func (q *QfxBatch) Entries() []*fin.Entry {
-	result := make([]*fin.Entry, len(q.QfxEntries))
+func (q *QfxBatch) Entries() []fin.Entry {
+	result := make([]fin.Entry, len(q.QfxEntries))
 	for i := range q.QfxEntries {
-		e := q.QfxEntries[i].Entry
-		result[i] = &e
+		result[i] = q.QfxEntries[i].Entry
 	}
 	return result
 }

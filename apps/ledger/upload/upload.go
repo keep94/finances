@@ -159,14 +159,14 @@ func (h *Handler) serveConfirmPageGet(
 	batch autoimport.Batch,
 	store Store) {
 	account := fin.Account{}
-	unreconciled := make(reconcile.ByAmountCheckNo)
+	var unreconciled []*fin.Entry
 	err := h.Doer.Do(func(t db.Transaction) error {
 		return findb.UnreconciledEntries(
 			t,
 			store,
 			acctId,
 			&account,
-			consumers.FromEntryAggregator(unreconciled))
+			consume2.AppendPtrsTo(&unreconciled))
 	})
 	if err != nil {
 		http_util.ReportError(
@@ -174,7 +174,7 @@ func (h *Handler) serveConfirmPageGet(
 		return
 	}
 	batchEntries := batch.Entries()
-	reconcile.New(batchEntries).Reconcile(unreconciled, kMaxDays)
+	reconcile.Reconcile(unreconciled, kMaxDays, batchEntries)
 	leftnav := h.LN.Generate(w, r, common.SelectAccount(acctId))
 	if leftnav == "" {
 		return
@@ -217,22 +217,23 @@ func (h *Handler) serveConfirmPage(w http.ResponseWriter, r *http.Request, acctI
 				if batch.Len() == 0 {
 					return
 				}
-				unreconciled := make(reconcile.ByAmountCheckNo)
+				var unreconciled []*fin.Entry
 				err = findb.UnreconciledEntries(
 					t,
 					store,
 					acctId,
 					nil,
-					consumers.FromEntryAggregator(unreconciled))
+					consume2.AppendPtrsTo(&unreconciled))
 				if err != nil {
 					return
 				}
 				batchEntries := batch.Entries()
-				for _, v := range batchEntries {
-					categorizer.Categorize(v)
+				for i := range batchEntries {
+					categorizer.Categorize(&batchEntries[i])
 				}
-				reconcile.New(batchEntries).Reconcile(unreconciled, kMaxDays)
-				err = store.DoEntryChanges(t, reconcile.GetChanges(batchEntries))
+				reconcile.Reconcile(unreconciled, kMaxDays, batchEntries)
+				err = store.DoEntryChanges(
+					t, reconcile.GetChanges(batchEntries))
 				if err != nil {
 					return
 				}
@@ -389,7 +390,7 @@ type confirmView struct {
 }
 
 func computeConfirmView(
-	account *fin.Account, batchEntries []*fin.Entry) *confirmView {
+	account *fin.Account, batchEntries []fin.Entry) *confirmView {
 	result := &confirmView{
 		Account:  account,
 		Balance:  account.Balance,
@@ -402,7 +403,7 @@ func computeConfirmView(
 		} else {
 			result.ExistingCount++
 		}
-		result.RBalance += v.Total()
+		result.RBalance += total
 	}
 	return result
 }

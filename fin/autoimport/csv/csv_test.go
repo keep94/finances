@@ -83,7 +83,7 @@ func TestReadPaypalCsv(t *testing.T) {
 		return
 	}
 	entries := batch.Entries()
-	expectedEntries := []*fin.Entry{
+	expectedEntries := []fin.Entry{
 		{
 			Date:       date_util.YMD(2015, 12, 6),
 			Name:       "TrackR, Inc",
@@ -111,7 +111,7 @@ func TestReadChaseCsv(t *testing.T) {
 		return
 	}
 	entries := batch.Entries()
-	expectedEntries := []*fin.Entry{
+	expectedEntries := []fin.Entry{
 		{
 			Date:       date_util.YMD(2023, 10, 12),
 			Name:       "LOZANO SUNNYVALE CARWASH",
@@ -137,7 +137,7 @@ func TestReadChaseCsvNoCard(t *testing.T) {
 		return
 	}
 	entries := batch.Entries()
-	expectedEntries := []*fin.Entry{
+	expectedEntries := []fin.Entry{
 		{
 			Date:       date_util.YMD(2023, 10, 12),
 			Name:       "LOZANO SUNNYVALE CARWASH",

@@ -40,7 +40,7 @@ type batchForTesting struct {
 	acctId int64
 }
 
-func (b batchForTesting) Entries() []*fin.Entry {
+func (b batchForTesting) Entries() []fin.Entry {
 	return nil
 }
 

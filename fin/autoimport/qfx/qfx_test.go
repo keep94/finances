@@ -299,7 +299,7 @@ func TestReadQFXMemoField(t *testing.T) {
 		return
 	}
 	entries := batch.Entries()
-	expectedEntries := []*fin.Entry{
+	expectedEntries := []fin.Entry{
 		{
 			Date:       date_util.YMD(2016, 8, 30),
 			Name:       "Choose Name & Field",
@@ -327,7 +327,7 @@ func TestReadQFX(t *testing.T) {
 		return
 	}
 	entries := batch.Entries()
-	expectedEntries := []*fin.Entry{
+	expectedEntries := []fin.Entry{
 		{
 			Date:       date_util.YMD(2012, 11, 14),
 			Name:       "WHOLEFDS LAT 10155",
@@ -357,7 +357,7 @@ func TestReadQFX(t *testing.T) {
 		return
 	}
 	amexEntries := amexBatch.Entries()
-	expectedAmexEntries := []*fin.Entry{
+	expectedAmexEntries := []fin.Entry{
 		{
 			Date:       date_util.YMD(2012, 11, 14),
 			Name:       "WHOLEFDS LAT 10155",
@@ -435,21 +435,6 @@ func TestMarkProcessed(t *testing.T) {
 	newBatch, _ = newBatch.SkipProcessed(nil)
 	if output := len(newBatch.Entries()); output != 1 {
 		t.Errorf("Expected 1, got %v", output)
-	}
-}
-
-func TestBatchImmutability(t *testing.T) {
-	r := strings.NewReader(kSampleQfx)
-	loader := QFXLoader{make(storeType)}
-	batch, err := loader.Load(3, "", r, date_util.YMD(2012, 11, 14))
-	if err != nil {
-		t.Errorf("Got error %v", err)
-		return
-	}
-	entries1 := batch.Entries()
-	entries2 := batch.Entries()
-	if entries1[0] == entries2[0] {
-		t.Errorf("Expect Entries() to return copies of fin.Entry")
 	}
 }
 

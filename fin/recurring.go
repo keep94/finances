@@ -1,4 +1,3 @@
-// Package fin declares basic types used in personal finance.
 package fin
 
 import (
