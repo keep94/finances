@@ -33,11 +33,12 @@ type Loader interface {
 // Batch represents a group of transactions read from a file using a Loader
 // instance. Batch instances are immutable.
 type Batch interface {
-	// Entries returns the entries in the batch, which the caller can safely
-	// modify.
+
+	// Entries returns copies of the entries in the batch, which the caller
+	// can safely modify.
 	Entries() []fin.Entry
 
-	// SkippProcessed returns a new Batch like this one that contains only
+	// SkipProcessed returns a new Batch like this one that contains only
 	// entries that have not already been processed. t is the database
 	// transaction; nil means run in a separate transaction.
 	SkipProcessed(t db.Transaction) (Batch, error)

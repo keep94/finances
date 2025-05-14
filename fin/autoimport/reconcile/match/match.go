@@ -23,7 +23,7 @@ func Match(matchTo, matchFrom []int, maxDiff int, buffer *[]int) []int {
 	params := matchParams{
 		MatchTo: matchTo, MatchFrom: matchFrom, MaxDiff: maxDiff}
 	if len(matchTo) > len(*buffer) {
-		*buffer = make([]int, len(matchTo))
+		*buffer = make([]int, 2*len(matchTo))
 	}
 	result := (*buffer)[:len(matchTo)]
 	bottomIdx := -1

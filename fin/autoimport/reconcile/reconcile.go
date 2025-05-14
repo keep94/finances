@@ -155,7 +155,7 @@ func dayDiff(end, start time.Time) int {
 func toAscendingIntArray(
 	entriesByDateDesc []*fin.Entry, buffer *[]int) []int {
 	if len(entriesByDateDesc) > len(*buffer) {
-		*buffer = make([]int, len(entriesByDateDesc))
+		*buffer = make([]int, 2*len(entriesByDateDesc))
 	}
 	result := (*buffer)[:len(entriesByDateDesc)]
 	revIdx := len(entriesByDateDesc) - 1
