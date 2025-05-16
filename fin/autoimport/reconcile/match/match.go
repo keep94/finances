@@ -7,6 +7,10 @@
 // is maximized.
 package match
 
+import (
+	"github.com/keep94/finances/fin"
+)
+
 // match returns an []int that is the same size of matchTo.
 // Each element in returned []int is either -1 if the corresponding
 // element in matchTo does not match any in matchFrom or is the matching
@@ -22,10 +26,7 @@ package match
 func Match(matchTo, matchFrom []int, maxDiff int, buffer *[]int) []int {
 	params := matchParams{
 		MatchTo: matchTo, MatchFrom: matchFrom, MaxDiff: maxDiff}
-	if len(matchTo) > len(*buffer) {
-		*buffer = make([]int, 2*len(matchTo))
-	}
-	result := (*buffer)[:len(matchTo)]
+	result := fin.SliceFromBuffer(len(matchTo), buffer)
 	bottomIdx := -1
 	for toIdx := range matchTo {
 		matchIdx := params.FindMatch(toIdx)

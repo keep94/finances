@@ -154,10 +154,7 @@ func dayDiff(end, start time.Time) int {
 
 func toAscendingIntArray(
 	entriesByDateDesc []*fin.Entry, buffer *[]int) []int {
-	if len(entriesByDateDesc) > len(*buffer) {
-		*buffer = make([]int, 2*len(entriesByDateDesc))
-	}
-	result := (*buffer)[:len(entriesByDateDesc)]
+	result := fin.SliceFromBuffer(len(entriesByDateDesc), buffer)
 	revIdx := len(entriesByDateDesc) - 1
 	for _, entry := range entriesByDateDesc {
 		result[revIdx] = dayDiff(entry.Date, kY2k)

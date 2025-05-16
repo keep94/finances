@@ -4,12 +4,14 @@ package fin
 import (
 	"errors"
 	"fmt"
-	"github.com/keep94/toolbox/passwords"
 	"math"
+	"math/bits"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/keep94/toolbox/passwords"
 )
 
 // A CatType specifies expense, income, or account category
@@ -596,6 +598,20 @@ func ParseUSD(s string) (v int64, e error) {
 	}
 	v = int64(math.Floor(f*100.0 + 0.5))
 	return
+}
+
+// SliceFromBuffer returns a slice of desired length from the first part
+// of buffer growing buffer if necessary. Note that the returned slice is
+// only valid until the next call to SliceFromBuffer with the same buffer.
+func SliceFromBuffer[E any](length int, buffer *[]E) []E {
+	if length > len(*buffer) {
+		*buffer = make([]E, nextPow2(length))
+	}
+	return (*buffer)[:length]
+}
+
+func nextPow2(x int) int {
+	return 1 << bits.Len(uint(x)-1)
 }
 
 type catSlice []Cat

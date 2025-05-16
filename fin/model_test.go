@@ -3,6 +3,8 @@ package fin
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildCatPayment(t *testing.T) {
@@ -361,6 +363,44 @@ func TestPermission(t *testing.T) {
 	if NonePermission.String() != "None" {
 		t.Error("expected 'None'")
 	}
+}
+
+func TestSliceFromBuffer(t *testing.T) {
+	var buffer []int
+	result := SliceFromBuffer(0, &buffer)
+	assert.Nil(t, result)
+	assert.Nil(t, buffer)
+	result = SliceFromBuffer(1, &buffer)
+	assert.Len(t, result, 1)
+	assert.Len(t, buffer, 1)
+	assert.Same(t, &result[0], &buffer[0])
+	result = SliceFromBuffer(2, &buffer)
+	assert.Len(t, result, 2)
+	assert.Len(t, buffer, 2)
+	assert.Same(t, &result[0], &buffer[0])
+	result = SliceFromBuffer(3, &buffer)
+	assert.Len(t, result, 3)
+	assert.Len(t, buffer, 4)
+	assert.Same(t, &result[0], &buffer[0])
+	result = SliceFromBuffer(4, &buffer)
+	assert.Len(t, result, 4)
+	assert.Len(t, buffer, 4)
+	assert.Same(t, &result[0], &buffer[0])
+	result = SliceFromBuffer(5, &buffer)
+	assert.Len(t, result, 5)
+	assert.Len(t, buffer, 8)
+	assert.Same(t, &result[0], &buffer[0])
+	result = SliceFromBuffer(16, &buffer)
+	assert.Len(t, result, 16)
+	assert.Len(t, buffer, 16)
+	assert.Same(t, &result[0], &buffer[0])
+	result = SliceFromBuffer(15, &buffer)
+	assert.Len(t, result, 15)
+	assert.Len(t, buffer, 16)
+	assert.Same(t, &result[0], &buffer[0])
+	result = SliceFromBuffer(0, &buffer)
+	assert.Len(t, result, 0)
+	assert.Len(t, buffer, 16)
 }
 
 func verifyParseUSD(t *testing.T, s string, expected int64) {
