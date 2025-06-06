@@ -10,8 +10,8 @@ github.com/keep94/securecookie v0.1.1 h1:mE0byVoxSWXByR+RroDw2o9nM84W4cDM5IqioOS
 github.com/keep94/securecookie v0.1.1/go.mod h1:pJC1AUsh/C3uCqswdODRn+5w6/0Ezy+3QKKKf6hAcCU=
 github.com/keep94/sessions v0.1.0 h1:sKY/ZVox4+SBTfwGnZ54zeLPCUI3HfGqT/w4sFXzHEI=
 github.com/keep94/sessions v0.1.0/go.mod h1:xV8BxgCZFYA8E1+kaO5jMVI8x+/wr5Qe+M4rhaCgmj4=
-github.com/keep94/toolbox v0.11.2 h1:OwUUXoRpzZqczq1GF9+QCjB9sWo5RMiYqDsI2Y6Xgk8=
-github.com/keep94/toolbox v0.11.2/go.mod h1:24PicnIycd6JZJwdE3+7MewUw3GNYAsDM1FaHDwiBvY=
+github.com/keep94/toolbox v0.12.0 h1:nTc8EL04Ssa2ANYFu7dLU2iFvES2d6uK6R4xY4MZYSE=
+github.com/keep94/toolbox v0.12.0/go.mod h1:24PicnIycd6JZJwdE3+7MewUw3GNYAsDM1FaHDwiBvY=
 github.com/keep94/weblogs v1.0.1 h1:sEN2JFqTPkc6BkCxwCKNXQuzh2h8eHLDLiCH2/KMWmM=
 github.com/keep94/weblogs v1.0.1/go.mod h1:bYHO1S7UhVcPkoDjKAJTuCdSXoVdcv1n1I09kYlBKwE=
 github.com/mattn/go-sqlite3 v1.14.16 h1:yOQRA0RpS5PFz/oikGwBEqvAWhWg5ufRz4ETLjwpU1Y=

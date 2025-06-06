@@ -212,6 +212,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http_util.ReportError(w, "Error reading database.", err)
 			return
 		}
+		graphCode, err := emitGraphCode(barGraph)
+		if err != nil {
+			http_util.ReportError(w, "Error rendering graphs.", err)
+			return
+		}
 		v := &view{
 			Values:       http_util.Values{Values: r.Form},
 			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
@@ -220,7 +225,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			BarGraph:     barGraph,
 			FormatStr:    formatStringLong(r.Form.Get("freq") == "Y"),
 			LeftNav:      leftnav,
-			GraphCode:    mustEmitGraphCode(barGraph),
+			GraphCode:    graphCode,
 			Global:       h.Global,
 		}
 		http_util.WriteTemplate(w, kTemplate, v)
@@ -228,6 +233,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		points, barGraph, cats, err := h.allCats(cds, r.URL, start, end, r.Form.Get("freq") == "Y")
 		if err != nil {
 			http_util.ReportError(w, "Error reading database.", err)
+			return
+		}
+		graphCode, err := emitGraphCode(barGraph)
+		if err != nil {
+			http_util.ReportError(w, "Error rendering graphs.", err)
 			return
 		}
 		v := &view{
@@ -238,7 +248,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			BarGraph:     barGraph,
 			FormatStr:    formatStringLong(r.Form.Get("freq") == "Y"),
 			LeftNav:      leftnav,
-			GraphCode:    mustEmitGraphCode(barGraph),
+			GraphCode:    graphCode,
 			Global:       h.Global,
 		}
 		http_util.WriteTemplate(w, kTemplate, v)
@@ -366,13 +376,13 @@ func (h *Handler) allCats(
 	return
 }
 
-func mustEmitGraphCode(
-	barGraph *google_jsgraph.BarGraph) template.HTML {
+func emitGraphCode(
+	barGraph *google_jsgraph.BarGraph) (template.HTML, error) {
 	if barGraph == nil {
-		return ""
+		return "", nil
 	}
 	graphMap := map[string]google_jsgraph.Graph{"graph": barGraph}
-	return google_jsgraph.MustEmit(graphMap)
+	return google_jsgraph.Emit(graphMap)
 }
 
 func formatString(isYearly bool) string {

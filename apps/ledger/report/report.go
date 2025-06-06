@@ -198,13 +198,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		displaySets = []*dataSet{builder.Build(fin.Expense, "expenses"), builder.Build(fin.Income, "income")}
 		catsInDropDown.AddSet(children[fin.Expense]).AddSet(children[fin.Income])
 	}
+	graphCode, err := emitGraphCode(displaySets)
+	if err != nil {
+		http_util.ReportError(w, "Error rendering graphs.", err)
+		return
+	}
 	v := &view{
 		Values:       http_util.Values{Values: r.Form},
 		CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 		Sets:         displaySets,
 		CatDetails:   cds.DetailsByIds(catsInDropDown),
 		LeftNav:      leftnav,
-		GraphCode:    mustEmitGraphCode(displaySets),
+		GraphCode:    graphCode,
 		Global:       h.Global}
 
 	http_util.WriteTemplate(w, kTemplate, v)
@@ -352,12 +357,12 @@ func getDateRange(r *http.Request) (start, end time.Time, err error) {
 	return
 }
 
-func mustEmitGraphCode(sets []*dataSet) template.HTML {
+func emitGraphCode(sets []*dataSet) (template.HTML, error) {
 	graphs := make(map[string]google_jsgraph.Graph)
 	for _, s := range sets {
 		s.RegisterGraph(graphs)
 	}
-	return google_jsgraph.MustEmit(graphs)
+	return google_jsgraph.Emit(graphs)
 }
 
 func init() {
