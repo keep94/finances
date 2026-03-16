@@ -15,6 +15,7 @@ import (
 	"github.com/keep94/finances/fin/categories"
 	"github.com/keep94/finances/fin/categories/categoriesdb"
 	"github.com/keep94/finances/fin/consumers"
+	"github.com/keep94/finances/fin/envelopes"
 	"github.com/keep94/finances/fin/filters"
 	"github.com/keep94/finances/fin/findb"
 	"github.com/keep94/toolbox/date_util"
@@ -201,9 +202,14 @@ var (
 	kTemplate *template.Template
 )
 
+type Store interface {
+	findb.EntriesRunner
+	findb.AllocationsByYearRunner
+}
+
 type Handler struct {
 	Cdc      categoriesdb.Getter
-	Store    findb.EntriesRunner
+	Store    Store
 	PageSize int
 	Links    bool
 	LN       *common.LeftNav
@@ -221,8 +227,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if pageNo < 0 {
 		pageNo = 0
 	}
+	envelopeYear, _ := strconv.ParseInt(r.Form.Get("eyear"), 10, 64)
 	cds, _ := h.Cdc.Get(nil)
 	var creater creater
+	if envelopeYear > 0 {
+		catset, err := envelopes.CatSetByYear(nil, h.Store, envelopeYear)
+		if err != nil {
+			http_util.ReportError(w, "Error reading envelopes.", err)
+			return
+		}
+		creater.EnvelopeCatSet = catset
+	}
 	filter := creater.CreateFilterer(r.Form, cds)
 	elo := creater.CreateEntryListOptions(r.Form)
 
@@ -277,7 +292,8 @@ func buildConsumer(
 }
 
 type creater struct {
-	ErrorMessage string
+	EnvelopeCatSet fin.CatSet
+	ErrorMessage   string
 }
 
 func (c *creater) CreateEntryListOptions(
@@ -293,7 +309,7 @@ func (c *creater) CreateEntryListOptions(
 
 func (c *creater) CreateFilterer(
 	values url.Values, cds categories.CatDetailStore) func(*fin.Entry) bool {
-	filt := createCatFilter(values, cds)
+	filt := c.createCatFilter(values, cds)
 	accountId, _ := strconv.ParseInt(values.Get("acctId"), 10, 64)
 	amtFilter := c.createAmountFilter(values.Get("range"))
 	name := values.Get("name")
@@ -320,13 +336,14 @@ func (c *creater) createAmountFilter(rangeStr string) filters.AmountFilter {
 	return filter
 }
 
-func createCatFilter(
+func (c *creater) createCatFilter(
 	values url.Values, cds categories.CatDetailStore) fin.CatFilter {
 	cat, caterr := fin.CatFromString(values.Get("cat"))
 	if caterr != nil {
 		return nil
 	}
-	return cds.Filter(cat, values.Get("top") == "")
+	return cds.FilterForEnvelopes(
+		cat, values.Get("top") == "", c.EnvelopeCatSet)
 }
 
 type view struct {

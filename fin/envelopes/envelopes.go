@@ -193,6 +193,19 @@ type Store interface {
 	findb.AllocationsByYearRunner
 }
 
+// CatSetByYear returns the set of categories in the envelope summary for
+// the given year.
+func CatSetByYear(
+	t db.Transaction,
+	store findb.AllocationsByYearRunner,
+	year int64) (fin.CatSet, error) {
+	allocations, err := store.AllocationsByYear(t, year)
+	if err != nil {
+		return nil, err
+	}
+	return allocationsToCatSet(allocations), nil
+}
+
 // SummaryByYear returns the envelope summary for a given year and sorts the
 // envelopes by name. t is the database transaction and must be non-nil.
 // store represents the datastore. cds contains the categories. year is the
@@ -218,7 +231,10 @@ func SummaryByYear(
 	if err != nil {
 		return nil, err
 	}
-	catDetails := cds.DetailsByIds(allocationsToCatSet(allocations))
+	envelopeCatSet := allocationsToCatSet(allocations)
+	catTotalsForEnvelopes := cds.TotalsForEnvelopes(
+		catTotalsForCatSet(rolledCatTotals, envelopeCatSet))
+	catDetails := cds.DetailsByIds(envelopeCatSet)
 	var result Envelopes
 	for _, cd := range catDetails {
 		var e Envelope
@@ -226,11 +242,21 @@ func SummaryByYear(
 		e.ExpenseId = cat.Id
 		e.Name = cd.FullName()
 		e.Allocated = allocations[e.ExpenseId]
-		e.Spent = rolledCatTotals[cat]
+		e.Spent = catTotalsForEnvelopes[cat]
 		result.add(e)
 	}
 	totalSpent := rolledCatTotals[fin.Expense]
 	return &Summary{Envelopes: result, TotalSpent: totalSpent}, nil
+}
+
+func catTotalsForCatSet(totals fin.CatTotals, cs fin.CatSet) fin.CatTotals {
+	result := make(fin.CatTotals, len(cs))
+	for c, ok := range cs {
+		if ok {
+			result[c] = totals[c]
+		}
+	}
+	return result
 }
 
 func allocationsToCatSet(allocations map[int64]int64) fin.CatSet {

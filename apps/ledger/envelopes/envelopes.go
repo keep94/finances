@@ -59,7 +59,7 @@ Total Progress: {{.}}<br>
 Total Progress: --<br>
 {{end}}
 <br>
-Uncategorized Spend: {{FormatUSDRaw .Summary.UncategorizedSpend}}<br>
+Uncategorized Spend: <a href="{{.TransactionsLink 0}}">{{FormatUSDRaw .Summary.UncategorizedSpend}}</a><br>
 Grand Total Spent: {{FormatUSDRaw .Summary.TotalSpent}}<br>
 {{with .Summary.TotalProgress.String}}
 Grand Total Progress: {{.}}<br>
@@ -250,7 +250,8 @@ func (e envelopeLinker) TransactionsLink(expenseId int64) *url.URL {
 	return http_util.NewUrl("/fin/list",
 		"sd", strconv.Itoa(int(e)),
 		"ed", strconv.Itoa(int(e+1)),
-		"cat", cat.String())
+		"cat", cat.String(),
+		"eyear", strconv.Itoa(int(e)))
 }
 
 func init() {

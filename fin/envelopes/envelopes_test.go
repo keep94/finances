@@ -145,6 +145,19 @@ func TestSummarySort(t *testing.T) {
 	assert.Equal(t, Envelopes{e4, e2, e3, e1}, sortedSummary.Envelopes)
 }
 
+func TestCatSetByYear(t *testing.T) {
+	var fs fakeStore
+	fs.setAllocation(1, 100000)
+	fs.setAllocation(2, 45000)
+	catset, err := CatSetByYear(nil, &fs, 2024)
+	assert.NoError(t, err)
+	expectedCatSet := fin.CatSet{
+		fin.NewCat("0:1"): true,
+		fin.NewCat("0:2"): true,
+	}
+	assert.Equal(t, expectedCatSet, catset)
+}
+
 func TestSummaryByYear(t *testing.T) {
 	var fs fakeStore
 	fs.addEntryWithCatPayment(

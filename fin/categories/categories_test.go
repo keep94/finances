@@ -1,9 +1,11 @@
 package categories
 
 import (
-	"github.com/keep94/finances/fin"
 	"reflect"
 	"testing"
+
+	"github.com/keep94/finances/fin"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestZeroValue(t *testing.T) {
@@ -417,6 +419,69 @@ func TestFilterTopLevelNoChildren(t *testing.T) {
 	cat_filter := cds.Filter(toCat("0:0"), false)
 	verifyFilterIncludes(t, cat_filter, toCat("0:0"))
 	verifyFilterExcludes(t, cat_filter, toCat("0:9983"))
+}
+
+func TestTotalsForEnvelopes(t *testing.T) {
+	cds := createCatDetailStore()
+	catTotals := fin.CatTotals{
+		toCat("0:0"):    3000,
+		toCat("0:1"):    2000,
+		toCat("0:4"):    200,
+		toCat("0:5"):    100,
+		toCat("0:2"):    300,
+		toCat("0:7"):    150,
+		toCat("0:9983"): 75,
+		toCat("1:1"):    -1100,
+	}
+	result := cds.TotalsForEnvelopes(catTotals)
+	expected := fin.CatTotals{
+		toCat("0:0"):    475,
+		toCat("0:1"):    1700,
+		toCat("0:4"):    200,
+		toCat("0:5"):    100,
+		toCat("0:2"):    300,
+		toCat("0:7"):    150,
+		toCat("0:9983"): 75,
+		toCat("1:1"):    -1100,
+	}
+	assert.Equal(t, expected, result)
+}
+
+func TestTotalsForEnvelopes_NonOverlapping(t *testing.T) {
+	cds := createCatDetailStore()
+	catTotals := fin.CatTotals{
+		toCat("0:1"): 1500,
+		toCat("0:2"): 900,
+		toCat("0:7"): 700,
+	}
+	assert.Equal(t, catTotals, cds.TotalsForEnvelopes(catTotals))
+
+	assert.Empty(t, cds.TotalsForEnvelopes(nil))
+}
+
+func TestFilterForEnvelopes(t *testing.T) {
+	cds := createCatDetailStore()
+	envelopes := fin.CatSet{
+		toCat("0:0"): true,
+		toCat("0:1"): true,
+		toCat("0:4"): true,
+		toCat("0:7"): true,
+		toCat("1:1"): true,
+	}
+	filter := cds.FilterForEnvelopes(toCat("0:0"), true, envelopes)
+	verifyFilterIncludes(
+		t, filter, toCat("0:0"), toCat("0:2"), toCat("0:3"), toCat("0:9983"))
+	verifyFilterExcludes(
+		t, filter, toCat("0:1"), toCat("0:4"), toCat("0:5"), toCat("0:7"))
+
+	filter2 := cds.FilterForEnvelopes(toCat("0:1"), true, envelopes)
+	verifyFilterIncludes(t, filter2, toCat("0:1"), toCat("0:5"))
+	verifyFilterExcludes(
+		t, filter2, toCat("0:2"), toCat("0:3"), toCat("0:4"), toCat("0:9983"))
+
+	filter3 := cds.FilterForEnvelopes(toCat("0:1"), false, envelopes)
+	verifyFilterIncludes(t, filter3, toCat("0:1"))
+	verifyFilterExcludes(t, filter3, toCat("0:5"), toCat("0:4"))
 }
 
 func toCat(s string) fin.Cat {

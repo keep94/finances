@@ -4,10 +4,12 @@ package categories
 import (
 	"errors"
 	"fmt"
-	"github.com/keep94/finances/fin"
+	"maps"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/keep94/finances/fin"
 )
 
 var (
@@ -307,7 +309,7 @@ func (cds CatDetailStore) AccountDetailByName(name string) (accountDetail Accoun
 
 // IsChildOf returns true if childCat is a child of parentCat.
 func (cds CatDetailStore) IsChildOf(childCat, parentCat fin.Cat) bool {
-	return cds.data().isChildOf(childCat, parentCat)
+	return cds.data().isChildOf(childCat, parentCat, nil)
 }
 
 // ImmediateParent returns the immediate parent category of given
@@ -321,20 +323,26 @@ func (cds CatDetailStore) ImmediateParent(cat fin.Cat) fin.Cat {
 }
 
 // Filter returns a CatFilter for finding entries under a specific category.
+// If includeChildren is true, any sub category of cat also gets included.
 func (cds CatDetailStore) Filter(cat fin.Cat, includeChildren bool) fin.CatFilter {
+	return cds.FilterForEnvelopes(cat, includeChildren, nil)
+}
+
+// FilterForEnvelopes works like Filter except when includeChildren is true,
+// if the ancestor path from the category being filtered up to but not
+// including cat contains categories in envelopes then that category is
+// not included.
+func (cds CatDetailStore) FilterForEnvelopes(
+	cat fin.Cat, includeChildren bool, envelopes fin.CatSet) fin.CatFilter {
 	if !includeChildren {
 		return func(c fin.Cat) bool {
 			return cat == c
 		}
 	}
-	if cat.Id == 0 {
-		return func(c fin.Cat) bool {
-			return cat.Type == c.Type
-		}
-	}
+	envelopesCopy := maps.Clone(envelopes)
 	data := cds.data()
 	return func(c fin.Cat) bool {
-		return data.isChildOf(c, cat)
+		return data.isChildOf(c, cat, envelopesCopy)
 	}
 }
 
@@ -585,6 +593,26 @@ func (cds CatDetailStore) RollUp(totals fin.CatTotals) (rolledUp fin.CatTotals, 
 	return
 }
 
+// TotalsForEnvelopes returns rolled up totals adjusted for envelopes.
+// This means that the returned rolled up total for each category will not
+// include the rolled up total for any sub categories also included in the
+// rolled up totals.
+func (cds CatDetailStore) TotalsForEnvelopes(
+	rolledUpTotals fin.CatTotals) fin.CatTotals {
+	result := maps.Clone(rolledUpTotals)
+	data := cds.data()
+	for k, v := range rolledUpTotals {
+		for !k.IsTop() {
+			k = data.immediateParent(k)
+			if _, ok := rolledUpTotals[k]; ok {
+				result[k] -= v
+				break
+			}
+		}
+	}
+	return result
+}
+
 // Ancestors returns all the ancestor categories of cat.
 // The first item in returned slice is always one of the top level
 // categories; the last item is always cat. The items in between are
@@ -611,13 +639,17 @@ func Ancestors(cds CatDetailStore, cat fin.Cat) []NamedCat {
 	return result
 }
 
-func (cds catDetailStore) isChildOf(childCat, parentCat fin.Cat) bool {
+func (cds catDetailStore) isChildOf(
+	childCat, parentCat fin.Cat, envelopes fin.CatSet) bool {
 	if childCat.Type != parentCat.Type {
 		return false
 	}
 	for !childCat.IsTop() {
 		if childCat == parentCat {
 			return true
+		}
+		if envelopes[childCat] {
+			return false
 		}
 		childCat = cds.immediateParent(childCat)
 	}
