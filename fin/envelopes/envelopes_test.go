@@ -173,15 +173,24 @@ func TestSummaryByYear(t *testing.T) {
 	fs.addEntryWithCatPayment(
 		fin.NewCatPayment(fin.NewCat("0:5"), 5000, false, 1))
 	fs.setAllocation(1, 100000)
-	fs.setAllocation(2, 45000)
+	fs.setAllocation(2, 35000)
+	fs.setAllocation(3, 10000)
 	summary, err := SummaryByYear(kNonNil, &fs, createCds(), 2024)
 	assert.NoError(t, err)
 	var expectedEnvelopes Envelopes
+
+	// Since expense:car:gas is a subcategory of expense:car, it is not
+	// included in the expense:car envelope. 18000-3500=14500
 	expectedEnvelopes.add(Envelope{
 		ExpenseId: 2,
 		Name:      "expense:car",
-		Allocated: 45000,
-		Spent:     18000})
+		Allocated: 35000,
+		Spent:     14500})
+	expectedEnvelopes.add(Envelope{
+		ExpenseId: 3,
+		Name:      "expense:car:gas",
+		Allocated: 10000,
+		Spent:     3500})
 	expectedEnvelopes.add(Envelope{
 		ExpenseId: 1,
 		Name:      "expense:house",
