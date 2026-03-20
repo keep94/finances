@@ -241,30 +241,26 @@ func validateId(id string) bool {
 	return checksum != 0
 }
 
-type storeType map[int64]map[string]bool
+type storeType map[int64]map[string]struct{}
 
 func (s storeType) Add(t db.Transaction, accountId int64, fitIds qfxdb.FitIdSet) error {
 	if s[accountId] == nil {
-		s[accountId] = make(map[string]bool)
+		s[accountId] = make(map[string]struct{})
 	}
-	for fitId, ok := range fitIds {
-		if ok {
-			s[accountId][fitId] = true
-		}
+	for fitId := range fitIds {
+		s[accountId][fitId] = struct{}{}
 	}
 	return nil
 }
 
 func (s storeType) Find(t db.Transaction, accountId int64, fitIds qfxdb.FitIdSet) (qfxdb.FitIdSet, error) {
 	var result qfxdb.FitIdSet
-	for fitId, ok := range fitIds {
-		if ok {
-			if s[accountId][fitId] {
-				if result == nil {
-					result = make(qfxdb.FitIdSet)
-				}
-				result[fitId] = true
+	for fitId := range fitIds {
+		if _, ok := s[accountId][fitId]; ok {
+			if result == nil {
+				result = make(qfxdb.FitIdSet)
 			}
+			result[fitId] = struct{}{}
 		}
 	}
 	return result, nil

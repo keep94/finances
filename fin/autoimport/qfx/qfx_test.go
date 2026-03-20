@@ -393,7 +393,7 @@ func TestSkipProcessed(t *testing.T) {
 	}
 	// Pretend a fitId that happens to match one of our entries gets processed in
 	// another account. This should not affect our batch.
-	store.Add(nil, 4, qfxdb.FitIdSet{"10201": true})
+	store.Add(nil, 4, qfxdb.FitIdSet{"10201": struct{}{}})
 
 	// SkipProcessed should return the same batch
 	newBatch, _ := batch.SkipProcessed(nil)
@@ -403,7 +403,7 @@ func TestSkipProcessed(t *testing.T) {
 
 	// Pretend one of the entries in the batch got processed in another thread.
 	// Our batch should have one fewer entries.
-	store.Add(nil, 3, qfxdb.FitIdSet{"10201": true})
+	store.Add(nil, 3, qfxdb.FitIdSet{"10201": struct{}{}})
 	newBatch, _ = batch.SkipProcessed(nil)
 	if output := len(newBatch.Entries()); output != 3 {
 		t.Errorf("Expected 3, got %v", output)
@@ -438,30 +438,26 @@ func TestMarkProcessed(t *testing.T) {
 	}
 }
 
-type storeType map[int64]map[string]bool
+type storeType map[int64]map[string]struct{}
 
 func (s storeType) Add(t db.Transaction, accountId int64, fitIds qfxdb.FitIdSet) error {
 	if s[accountId] == nil {
-		s[accountId] = make(map[string]bool)
+		s[accountId] = make(map[string]struct{})
 	}
-	for fitId, ok := range fitIds {
-		if ok {
-			s[accountId][fitId] = true
-		}
+	for fitId := range fitIds {
+		s[accountId][fitId] = struct{}{}
 	}
 	return nil
 }
 
 func (s storeType) Find(t db.Transaction, accountId int64, fitIds qfxdb.FitIdSet) (qfxdb.FitIdSet, error) {
 	var result qfxdb.FitIdSet
-	for fitId, ok := range fitIds {
-		if ok {
-			if s[accountId][fitId] {
-				if result == nil {
-					result = make(qfxdb.FitIdSet)
-				}
-				result[fitId] = true
+	for fitId := range fitIds {
+		if _, ok := s[accountId][fitId]; ok {
+			if result == nil {
+				result = make(qfxdb.FitIdSet)
 			}
+			result[fitId] = struct{}{}
 		}
 	}
 	return result, nil

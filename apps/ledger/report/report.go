@@ -160,10 +160,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		v := &view{
 			Values:       http_util.Values{Values: r.Form},
 			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
-			CatDetails:   cds.DetailsByIds(fin.CatSet{fin.Expense: true, fin.Income: true}),
-			Error:        errors.New("Dates must be in yyyyMMdd format."),
-			LeftNav:      leftnav,
-			Global:       h.Global}
+			CatDetails: cds.DetailsByIds(
+				fin.CatSet{fin.Expense: struct{}{}, fin.Income: struct{}{}}),
+			Error:   errors.New("Dates must be in yyyyMMdd format."),
+			LeftNav: leftnav,
+			Global:  h.Global}
 		http_util.WriteTemplate(w, kTemplate, v)
 		return
 	}
@@ -189,7 +190,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Children:  children,
 		HideGraph: h.NoWifi,
 		Colors:    kPieGraphColors}
-	catsInDropDown := fin.CatSet{fin.Expense: true, fin.Income: true}
+	catsInDropDown := fin.CatSet{
+		fin.Expense: struct{}{}, fin.Income: struct{}{}}
 	var displaySets []*dataSet
 	if caterr == nil {
 		displaySets = []*dataSet{builder.Build(cat, "expenses")}
@@ -291,23 +293,21 @@ func (b *dataSetBuilder) Build(cat fin.Cat, divName string) *dataSet {
 		DivName:   divName}
 	isIncome := cat.Type == fin.IncomeCat
 	idx := 0
-	for childCat, ok := range childCats {
-		if ok {
-			item := &dataPoint{
-				Name: b.Cds.DetailById(childCat).FullName(),
-				Url:  http_util.WithParams(b.ListUrl, "cat", childCat.String())}
-			if isIncome {
-				item.Value = -b.Totals[childCat]
-			} else {
-				item.Value = b.Totals[childCat]
-			}
-			if _, ok := b.Children[childCat]; ok {
-				item.ReportUrl = http_util.WithParams(
-					b.ReportUrl, "cat", childCat.String())
-			}
-			result.Items[idx] = item
-			idx++
+	for childCat := range childCats {
+		item := &dataPoint{
+			Name: b.Cds.DetailById(childCat).FullName(),
+			Url:  http_util.WithParams(b.ListUrl, "cat", childCat.String())}
+		if isIncome {
+			item.Value = -b.Totals[childCat]
+		} else {
+			item.Value = b.Totals[childCat]
 		}
+		if _, ok := b.Children[childCat]; ok {
+			item.ReportUrl = http_util.WithParams(
+				b.ReportUrl, "cat", childCat.String())
+		}
+		result.Items[idx] = item
+		idx++
 	}
 	if isIncome {
 		result.Total = -b.Totals[cat]

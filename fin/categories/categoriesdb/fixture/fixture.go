@@ -489,7 +489,8 @@ func (f *Fixture) CachePurge(t *testing.T, cache Purger) {
 	oldCds := cacheGet(t, cache)
 	cat1 := detailByFullName(t, oldCds, "expense:cat").Id()
 	cat2 := detailByFullName(t, oldCds, "income:cat:subcat").Id()
-	if err := cache.Purge(nil, fin.CatSet{cat1: true, cat2: true}); err != nil {
+	if err := cache.Purge(
+		nil, fin.CatSet{cat1: struct{}{}, cat2: struct{}{}}); err != nil {
 		t.Fatalf("Got error purging: %v", err)
 	}
 	cds := cacheGet(t, cache)

@@ -97,11 +97,11 @@ func TestPurgeableCats(t *testing.T) {
 	cds := createCatDetailStore()
 	actual := cds.PurgeableCats(fin.CatTotals{toCat("0:8"): 0})
 	expected := fin.CatSet{
-		toCat("0:3"):  true,
-		toCat("0:6"):  true,
-		toCat("0:7"):  true,
-		toCat("0:98"): true,
-		toCat("0:99"): true}
+		toCat("0:3"):  struct{}{},
+		toCat("0:6"):  struct{}{},
+		toCat("0:7"):  struct{}{},
+		toCat("0:98"): struct{}{},
+		toCat("0:99"): struct{}{}}
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Expected %v, got %v", expected, actual)
 	}
@@ -122,8 +122,8 @@ func TestPurgeableCatsUsed(t *testing.T) {
 
 func TestPurgeableAccounts(t *testing.T) {
 	cds := createCatDetailStore()
-	actual := cds.PurgeableAccounts(fin.AccountSet{2: true})
-	expected := fin.AccountSet{3: true, 4: true, 5: true}
+	actual := cds.PurgeableAccounts(fin.AccountSet{2: struct{}{}})
+	expected := fin.AccountSet{3: struct{}{}, 4: struct{}{}, 5: struct{}{}}
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Expected %v, got %v", expected, actual)
 	}
@@ -132,7 +132,8 @@ func TestPurgeableAccounts(t *testing.T) {
 func TestPurgeableAccountsUsed(t *testing.T) {
 	cds := createCatDetailStore()
 	actual := cds.PurgeableAccounts(
-		fin.AccountSet{2: true, 3: true, 4: true, 5: true})
+		fin.AccountSet{
+			2: struct{}{}, 3: struct{}{}, 4: struct{}{}, 5: struct{}{}})
 	if actual != nil {
 		t.Errorf("Expected nil, got %v", actual)
 	}
@@ -321,13 +322,12 @@ func TestSortedCatRecs(t *testing.T) {
 func TestDetailsByIds(t *testing.T) {
 	cds := createCatDetailStore()
 	actual := cds.DetailsByIds(fin.CatSet{
-		toCat("1:2"):   true,
-		toCat("1:4"):   true,
-		toCat("2:1"):   true,
-		toCat("0:101"): true,
-		toCat("0:3"):   true,
-		toCat("0:1"):   true,
-		toCat("0:102"): false})
+		toCat("1:2"):   struct{}{},
+		toCat("1:4"):   struct{}{},
+		toCat("2:1"):   struct{}{},
+		toCat("0:101"): struct{}{},
+		toCat("0:3"):   struct{}{},
+		toCat("0:1"):   struct{}{}})
 	expected := []CatDetail{
 		createCatDetail(toCat("0:101"), "expense:101", false),
 		createCatDetail(toCat("0:1"), "expense:car", true),
@@ -371,20 +371,20 @@ func TestRollUp(t *testing.T) {
 		toCat("0:0"):    3600,
 		toCat("1:0"):    1900}
 	expected_children := map[fin.Cat]fin.CatSet{
-		toCat("0:101"): {toCat("0:8"): true},
-		toCat("0:3"):   {toCat("0:7"): true},
-		toCat("0:1"):   {toCat("0:4"): true, toCat("0:5"): true},
-		toCat("1:3"):   {toCat("1:4"): true},
-		toCat("1:1"):   {toCat("1:3"): true},
+		toCat("0:101"): {toCat("0:8"): struct{}{}},
+		toCat("0:3"):   {toCat("0:7"): struct{}{}},
+		toCat("0:1"):   {toCat("0:4"): struct{}{}, toCat("0:5"): struct{}{}},
+		toCat("1:3"):   {toCat("1:4"): struct{}{}},
+		toCat("1:1"):   {toCat("1:3"): struct{}{}},
 		toCat("0:0"): {
-			toCat("0:101"):  true,
-			toCat("0:9983"): true,
-			toCat("0:3"):    true,
-			toCat("0:1"):    true,
-			toCat("0:2"):    true},
+			toCat("0:101"):  struct{}{},
+			toCat("0:9983"): struct{}{},
+			toCat("0:3"):    struct{}{},
+			toCat("0:1"):    struct{}{},
+			toCat("0:2"):    struct{}{}},
 		toCat("1:0"): {
-			toCat("1:1"): true,
-			toCat("1:2"): true}}
+			toCat("1:1"): struct{}{},
+			toCat("1:2"): struct{}{}}}
 	if !reflect.DeepEqual(totals, expected_totals) {
 		t.Errorf("Expected %v, got %v", expected_totals, totals)
 	}
@@ -462,11 +462,11 @@ func TestTotalsForEnvelopes_NonOverlapping(t *testing.T) {
 func TestFilterForEnvelopes(t *testing.T) {
 	cds := createCatDetailStore()
 	envelopes := fin.CatSet{
-		toCat("0:0"): true,
-		toCat("0:1"): true,
-		toCat("0:4"): true,
-		toCat("0:7"): true,
-		toCat("1:1"): true,
+		toCat("0:0"): struct{}{},
+		toCat("0:1"): struct{}{},
+		toCat("0:4"): struct{}{},
+		toCat("0:7"): struct{}{},
+		toCat("1:1"): struct{}{},
 	}
 	filter := cds.FilterForEnvelopes(toCat("0:0"), true, envelopes)
 	verifyFilterIncludes(

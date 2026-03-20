@@ -251,10 +251,8 @@ func SummaryByYear(
 
 func catTotalsForCatSet(totals fin.CatTotals, cs fin.CatSet) fin.CatTotals {
 	result := make(fin.CatTotals, len(cs))
-	for c, ok := range cs {
-		if ok {
-			result[c] = totals[c]
-		}
+	for c := range cs {
+		result[c] = totals[c]
 	}
 	return result
 }
@@ -263,7 +261,7 @@ func allocationsToCatSet(allocations map[int64]int64) fin.CatSet {
 	result := make(fin.CatSet)
 	for k, _ := range allocations {
 		cat := fin.Cat{Id: k, Type: fin.ExpenseCat}
-		result[cat] = true
+		result[cat] = struct{}{}
 	}
 	return result
 }

@@ -122,19 +122,17 @@ func (c *catDetailCache) Purge(tx *sql.Tx, cats fin.CatSet) error {
 		return err
 	}
 	defer incomeStmt.Close()
-	for cat, ok := range cats {
-		if ok {
-			if cat.Type == fin.ExpenseCat {
-				if _, err := expenseStmt.Exec(cat.Id); err != nil {
-					return err
-				}
-			} else if cat.Type == fin.IncomeCat {
-				if _, err := incomeStmt.Exec(cat.Id); err != nil {
-					return err
-				}
-			} else {
-				return categories.NeedExpenseIncomeCategory
+	for cat := range cats {
+		if cat.Type == fin.ExpenseCat {
+			if _, err := expenseStmt.Exec(cat.Id); err != nil {
+				return err
 			}
+		} else if cat.Type == fin.IncomeCat {
+			if _, err := incomeStmt.Exec(cat.Id); err != nil {
+				return err
+			}
+		} else {
+			return categories.NeedExpenseIncomeCategory
 		}
 	}
 	return c.Invalidate(tx)

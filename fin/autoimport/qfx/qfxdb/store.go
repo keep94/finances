@@ -12,7 +12,7 @@ var (
 )
 
 // FitIdSet represents a set of fitids.
-type FitIdSet map[string]bool
+type FitIdSet map[string]struct{}
 
 // Interface Store handles storage and retrieval of fitIds from QFX files.
 type Store interface {

@@ -199,9 +199,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Values:       http_util.Values{Values: r.Form},
 			CatDisplayer: common.CatDisplayer{CatDetailStore: cds},
 			Error:        errors.New("Dates must be in yyyyMMdd format."),
-			CatDetails:   cds.DetailsByIds(fin.CatSet{fin.Expense: true, fin.Income: true}),
-			LeftNav:      leftnav,
-			Global:       h.Global,
+			CatDetails: cds.DetailsByIds(
+				fin.CatSet{fin.Expense: struct{}{}, fin.Income: struct{}{}}),
+			LeftNav: leftnav,
+			Global:  h.Global,
 		}
 		http_util.WriteTemplate(w, kTemplate, v)
 		return
@@ -317,7 +318,7 @@ func (h *Handler) singleCat(
 		}
 	}
 	_, children := cds.RollUp(ct)
-	cats = fin.CatSet{fin.Expense: true, fin.Income: true}
+	cats = fin.CatSet{fin.Expense: struct{}{}, fin.Income: struct{}{}}
 	cats.AddSet(children[cat])
 	return
 }
@@ -371,7 +372,7 @@ func (h *Handler) allCats(
 		}
 	}
 	_, children := cds.RollUp(ct)
-	cats = fin.CatSet{fin.Expense: true, fin.Income: true}
+	cats = fin.CatSet{fin.Expense: struct{}{}, fin.Income: struct{}{}}
 	cats.AddSet(children[fin.Expense]).AddSet(children[fin.Income])
 	return
 }

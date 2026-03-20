@@ -205,13 +205,13 @@ func (cds CatDetailStore) PurgeableAccounts(
 		if cat.Type != fin.AccountCat || d.active {
 			continue
 		}
-		if accountSet[cat.Id] {
+		if _, ok := accountSet[cat.Id]; ok {
 			continue
 		}
 		if result == nil {
 			result = make(fin.AccountSet)
 		}
-		result[cat.Id] = true
+		result[cat.Id] = struct{}{}
 	}
 	return result
 }
@@ -234,7 +234,7 @@ func (cds CatDetailStore) PurgeableCats(total fin.CatTotals) fin.CatSet {
 		if result == nil {
 			result = make(fin.CatSet)
 		}
-		result[cat] = true
+		result[cat] = struct{}{}
 	}
 	return result
 }
@@ -254,15 +254,10 @@ func (cds CatDetailStore) ActiveAccountDetails() []AccountDetail {
 
 // DetailsByIds returns details sorted by full name for selected categories.
 func (cds CatDetailStore) DetailsByIds(cats fin.CatSet) []CatDetail {
-	result := make([]CatDetail, len(cats))
-	idx := 0
-	for cat, ok := range cats {
-		if ok {
-			result[idx] = cds.DetailById(cat)
-			idx++
-		}
+	result := make([]CatDetail, 0, len(cats))
+	for cat := range cats {
+		result = append(result, cds.DetailById(cat))
 	}
-	result = result[:idx]
 	sort.Sort(catDetails(result))
 	return result
 }
@@ -585,7 +580,7 @@ func (cds CatDetailStore) RollUp(totals fin.CatTotals) (rolledUp fin.CatTotals, 
 				childs = make(fin.CatSet)
 				children[parent] = childs
 			}
-			childs[k] = true
+			childs[k] = struct{}{}
 			k = parent
 		}
 		rolledUp[k] = rolledUp[k] + v
@@ -648,7 +643,7 @@ func (cds catDetailStore) isChildOf(
 		if childCat == parentCat {
 			return true
 		}
-		if envelopes[childCat] {
+		if _, ok := envelopes[childCat]; ok {
 			return false
 		}
 		childCat = cds.immediateParent(childCat)

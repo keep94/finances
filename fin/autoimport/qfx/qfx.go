@@ -169,7 +169,7 @@ func (q *QfxBatch) SkipProcessed(t db.Transaction) (autoimport.Batch, error) {
 	result := make([]*QfxEntry, len(q.QfxEntries))
 	idx := 0
 	for _, qe := range q.QfxEntries {
-		if !existingFitIds[qe.FitId] {
+		if _, ok := existingFitIds[qe.FitId]; !ok {
 			result[idx] = qe
 			idx++
 		}
@@ -188,7 +188,7 @@ func (q *QfxBatch) toFitIdSet() qfxdb.FitIdSet {
 		// Only report FITIDs that aren't 0. This way 0 never gets recorded
 		// as a used FITID, and 0 never get read as an existing FITID.
 		if strings.TrimSpace(qe.FitId) != "0" {
-			fitIdSet[qe.FitId] = true
+			fitIdSet[qe.FitId] = struct{}{}
 		}
 	}
 	return fitIdSet

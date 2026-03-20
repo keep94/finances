@@ -92,15 +92,13 @@ func (c Cat) IsTop() bool {
 }
 
 // CatSet represents a set of Cat instances
-type CatSet map[Cat]bool
+type CatSet map[Cat]struct{}
 
 // AddSet adds the Cat instances in rhs to this instance.
 // AddSet returns this instance for chaining.
 func (c CatSet) AddSet(rhs CatSet) CatSet {
-	for cat, ok := range rhs {
-		if ok {
-			c[cat] = true
-		}
+	for cat := range rhs {
+		c[cat] = struct{}{}
 	}
 	return c
 }
@@ -523,16 +521,16 @@ func (c CatTotals) Include(catPayment CatPayment) {
 }
 
 // AccountSet represents a set of account ids.
-type AccountSet map[int64]bool
+type AccountSet map[int64]struct{}
 
 func (a AccountSet) Include(catPayment CatPayment) {
 	for i := range catPayment.cr {
 		catrec := &catPayment.cr[i]
 		if catrec.Cat.Type == AccountCat {
-			a[catrec.Cat.Id] = true
+			a[catrec.Cat.Id] = struct{}{}
 		}
 	}
-	a[catPayment.id] = true
+	a[catPayment.id] = struct{}{}
 }
 
 // Permission represents a user's permission to the database

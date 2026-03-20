@@ -26,12 +26,10 @@ func add(tx *sql.Tx, accountId int64, fitIds qfxdb.FitIdSet) error {
 		return err
 	}
 	defer addStmt.Close()
-	for fitId, ok := range fitIds {
-		if ok {
-			_, err := addStmt.Exec(accountId, fitId)
-			if err != nil {
-				return err
-			}
+	for fitId := range fitIds {
+		_, err := addStmt.Exec(accountId, fitId)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -55,18 +53,16 @@ func find(tx *sql.Tx, accountId int64, fitIds qfxdb.FitIdSet) (qfxdb.FitIdSet, e
 	}
 	defer stmt.Close()
 	var result qfxdb.FitIdSet
-	for fitId, ok := range fitIds {
-		if ok {
-			found, err := findByAccountIdAndFitId(stmt, accountId, fitId)
-			if err != nil {
-				return nil, err
+	for fitId := range fitIds {
+		found, err := findByAccountIdAndFitId(stmt, accountId, fitId)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			if result == nil {
+				result = make(qfxdb.FitIdSet)
 			}
-			if found {
-				if result == nil {
-					result = make(qfxdb.FitIdSet)
-				}
-				result[fitId] = true
-			}
+			result[fitId] = struct{}{}
 		}
 	}
 	return result, nil

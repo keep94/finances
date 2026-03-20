@@ -152,8 +152,8 @@ func TestCatSetByYear(t *testing.T) {
 	catset, err := CatSetByYear(nil, &fs, 2024)
 	assert.NoError(t, err)
 	expectedCatSet := fin.CatSet{
-		fin.NewCat("0:1"): true,
-		fin.NewCat("0:2"): true,
+		fin.NewCat("0:1"): struct{}{},
+		fin.NewCat("0:2"): struct{}{},
 	}
 	assert.Equal(t, expectedCatSet, catset)
 }

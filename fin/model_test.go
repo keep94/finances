@@ -235,7 +235,8 @@ func TestAccountSet(t *testing.T) {
 		CatRec{NewCat("2:2"), 1000, false}).SetPaymentId(
 		1).SetReconciled(false).Build()
 	as.Include(cp)
-	var expected AccountSet = AccountSet{1: true, 2: true, 4: true}
+	var expected AccountSet = AccountSet{
+		1: struct{}{}, 2: struct{}{}, 4: struct{}{}}
 	if !reflect.DeepEqual(expected, as) {
 		t.Errorf("Expected %v, got %v", expected, as)
 	}
@@ -328,9 +329,13 @@ func TestParseUSD(t *testing.T) {
 func TestCatSet(t *testing.T) {
 	catSet := make(CatSet)
 	catSet.AddSet(
-		CatSet{NewCat("0:3"): true, NewCat("0:4"): true}).AddSet(
-		CatSet{NewCat("0:4"): true, NewCat("0:5"): true, NewCat("0:6"): false})
-	expected := CatSet{NewCat("0:3"): true, NewCat("0:4"): true, NewCat("0:5"): true}
+		CatSet{NewCat("0:3"): struct{}{}, NewCat("0:4"): struct{}{}})
+	catSet.AddSet(
+		CatSet{NewCat("0:4"): struct{}{}, NewCat("0:5"): struct{}{}})
+	expected := CatSet{
+		NewCat("0:3"): struct{}{},
+		NewCat("0:4"): struct{}{},
+		NewCat("0:5"): struct{}{}}
 	if !reflect.DeepEqual(expected, catSet) {
 		t.Errorf("Expected %v, got %v", expected, catSet)
 	}

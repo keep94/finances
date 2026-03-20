@@ -69,17 +69,13 @@ func main() {
 			fmt.Println(detail.FullName())
 		}
 		for id := range accounts {
-			if accounts[id] {
-				catId := fin.Cat{Id: id, Type: fin.AccountCat}
-				fmt.Println(cds.DetailById(catId).FullName())
-			}
+			catId := fin.Cat{Id: id, Type: fin.AccountCat}
+			fmt.Println(cds.DetailById(catId).FullName())
 		}
 		if !fDryRun {
 			for id := range accounts {
-				if accounts[id] {
-					if err = store.RemoveAccount(t, id); err != nil {
-						return err
-					}
+				if err = store.RemoveAccount(t, id); err != nil {
+					return err
 				}
 			}
 			// We do this last because it invalidates the cache.

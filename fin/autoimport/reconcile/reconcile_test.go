@@ -243,11 +243,13 @@ func TestGetChanges(t *testing.T) {
 			Name:       "Update2",
 			CatPayment: fin.NewCatPayment(fin.NewCat("0:89"), 0, true, 3)}}
 	changes := GetChanges(entries)
-	addNames := make(map[string]bool)
+	addNames := make(map[string]struct{})
 	for _, v := range changes.Adds {
-		addNames[v.Name] = true
+		addNames[v.Name] = struct{}{}
 	}
-	if !reflect.DeepEqual(addNames, map[string]bool{"Add1": true, "Add2": true}) {
+	if !reflect.DeepEqual(
+		addNames,
+		map[string]struct{}{"Add1": struct{}{}, "Add2": struct{}{}}) {
 		t.Errorf("Expected Add1, Add2 but got %v", addNames)
 	}
 	if changes.Updates[924] == nil || changes.Updates[1007] == nil || len(changes.Updates) != 2 {
