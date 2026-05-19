@@ -138,6 +138,13 @@ func doSave(r *http.Request, store findb.AddAllocationRunner) error {
 	if caterr != nil || cat.Type != fin.ExpenseCat {
 		return errors.New("Please choose an expense category.")
 	}
+
+	// The toplevel expense envelope is the same thing as uncategorized
+	// spend. Having both messes up the math for the totals on the
+	// envelopes page.
+	if cat == fin.Expense {
+		return errors.New("Do not choose toplevel expense category.")
+	}
 	amount, amounterr := fin.ParseUSD(r.Form.Get("amount"))
 	if amounterr != nil {
 		return errors.New("Invalid amount.")
