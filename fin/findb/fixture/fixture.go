@@ -1282,13 +1282,28 @@ func Allocations(t *testing.T, store AllocationsStore) {
 	assert.NoError(t, store.AddAllocation(nil, 2024, 2, 9000))
 	assert.NoError(t, store.AddAllocation(nil, 2025, 1, 5000))
 	assert.NoError(t, store.AddAllocation(nil, 2025, 2, 4000))
+
+	// Check that we can't add the same envelope twice to the same year
+	assert.Error(t, store.AddAllocation(nil, 2025, 2, 7000))
+
+	// Check fetching envelopes for 2024
 	alloc, err := store.AllocationsByYear(nil, 2024)
 	assert.NoError(t, err)
 	assert.Equal(t, map[int64]int64{1: 10000, 2: 9000}, alloc)
+
+	// Check removing an envelope for 2024
 	assert.NoError(t, store.RemoveAllocation(nil, 2024, 1))
 	alloc, err = store.AllocationsByYear(nil, 2024)
 	assert.NoError(t, err)
 	assert.Equal(t, map[int64]int64{2: 9000}, alloc)
+
+	// Check that we can add back a removed envelope
+	assert.NoError(t, store.AddAllocation(nil, 2024, 1, 20000))
+	alloc, err = store.AllocationsByYear(nil, 2024)
+	assert.NoError(t, err)
+	assert.Equal(t, map[int64]int64{1: 20000, 2: 9000}, alloc)
+
+	// Check fetching envelopes for 2025
 	alloc, err = store.AllocationsByYear(nil, 2025)
 	assert.NoError(t, err)
 	assert.Equal(t, map[int64]int64{1: 5000, 2: 4000}, alloc)
