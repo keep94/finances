@@ -7,6 +7,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestCatFromStringError(t *testing.T) {
+	cat, err := CatFromString("abcd")
+	assert.Error(t, err)
+	assert.Zero(t, cat)
+	_, err = CatFromString("ab:cd")
+	assert.Error(t, err)
+	cat, err = CatFromString("3:1")
+	assert.Error(t, err)
+	assert.Zero(t, cat)
+	_, err = CatFromString("-1:1")
+	assert.Error(t, err)
+	cat, err = CatFromString("1:-1")
+	assert.NoError(t, err)
+	assert.Equal(t, Cat{Type: IncomeCat, Id: -1}, cat)
+}
+
 func TestBuildCatPayment(t *testing.T) {
 	cpb := CatPaymentBuilder{}
 	cpb.SetPaymentId(5).SetReconciled(true)

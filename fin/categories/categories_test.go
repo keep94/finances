@@ -193,6 +193,7 @@ func TestImmediateParent(t *testing.T) {
 	verifyImmediateParent(t, cds, toCat("1:0"), "1:0")
 	verifyImmediateParent(t, cds, toCat("1:1"), "1:0")
 	verifyImmediateParent(t, cds, toCat("1:3"), "1:1")
+	verifyImmediateParent(t, cds, toCat("2:0"), "2:0")
 	verifyImmediateParent(t, cds, toCat("2:1"), "2:1")
 	verifyImmediateParent(t, cds, toCat("0:101"), "0:0")
 	verifyImmediateParent(t, cds, toCat("1:101"), "1:0")
@@ -214,6 +215,7 @@ func TestDetailById(t *testing.T) {
 	verifyCatDetail(t, cds, toCat("1:1"), "income:google", true)
 	verifyCatDetail(t, cds, toCat("1:2"), "income:mtv", true)
 	verifyCatDetail(t, cds, toCat("1:3"), "income:google:bonus", true)
+	verifyCatDetail(t, cds, toCat("2:0"), "account:0", false)
 	verifyCatDetail(t, cds, toCat("2:1"), "account:checking", true)
 	verifyCatDetail(t, cds, toCat("2:2"), "account:savings", true)
 	verifyCatDetail(t, cds, toCat("2:3"), "account:inactive", false)
@@ -224,6 +226,7 @@ func TestDetailById(t *testing.T) {
 
 func TestAccountDetailById(t *testing.T) {
 	cds := createCatDetailStore()
+	verifyAccountDetail(t, cds, 0, "0", false)
 	verifyAccountDetail(t, cds, 1, "checking", true)
 	verifyAccountDetail(t, cds, 2, "savings", true)
 	verifyAccountDetail(t, cds, 3, "inactive", false)

@@ -73,7 +73,12 @@ func CatFromString(s string) (cat Cat, err error) {
 	if err != nil {
 		return
 	}
-	cat = Cat{Type: CatType(i64), Id: id}
+	catType := CatType(i64)
+	if catType < ExpenseCat || catType > AccountCat {
+		err = errors.New("Invalid CatType")
+		return
+	}
+	cat = Cat{Type: catType, Id: id}
 	return
 }
 
