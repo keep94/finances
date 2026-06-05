@@ -301,10 +301,7 @@ func (h *Handler) doPost(
 				catPopularity,
 				err))
 	} else {
-		prev := r.Form.Get("prev")
-		if prev == "" {
-			prev = "/fin/recurringlist"
-		}
+		prev := http_util.Sanitize(r.Form.Get("prev"), "/fin/recurringlist")
 		http_util.Redirect(w, r, prev)
 	}
 }

@@ -280,10 +280,7 @@ func (h *Handler) doPost(
 				leftnav,
 				err))
 	} else {
-		prev := r.Form.Get("prev")
-		if prev == "" {
-			prev = "/fin/list"
-		}
+		prev := http_util.Sanitize(r.Form.Get("prev"), "/fin/list")
 		http_util.Redirect(w, r, prev)
 	}
 }
