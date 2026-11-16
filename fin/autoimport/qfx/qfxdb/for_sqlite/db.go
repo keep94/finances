@@ -17,7 +17,7 @@ const (
 
 // New creates sqlite implementation of qfxdb.Store interface
 func New(db *sqlite3_db.Db) qfxdb.Store {
-	return sqliteStore{db}
+	return &sqliteStore{db}
 }
 
 func add(tx *sql.Tx, accountId int64, fitIds qfxdb.FitIdSet) error {
@@ -72,14 +72,14 @@ type sqliteStore struct {
 	db sqlite3_db.Doer
 }
 
-func (s sqliteStore) Add(
+func (s *sqliteStore) Add(
 	t db.Transaction, accountId int64, fitIds qfxdb.FitIdSet) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return add(tx, accountId, fitIds)
 	})
 }
 
-func (s sqliteStore) Find(
+func (s *sqliteStore) Find(
 	t db.Transaction, accountId int64, fitIds qfxdb.FitIdSet) (found qfxdb.FitIdSet, err error) {
 	err = sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) (err error) {
 		found, err = find(tx, accountId, fitIds)

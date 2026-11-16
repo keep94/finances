@@ -262,7 +262,7 @@ NEWFILEUID:NONE
 func TestReadQFXBadFile(t *testing.T) {
 	r := strings.NewReader("A bad file\nNo QFX things in here\n")
 	var loader autoimport.Loader
-	loader = QFXLoader{make(storeType)}
+	loader = &QFXLoader{make(storeType)}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2012, 11, 14))
 	if err != nil {
 		t.Errorf("Got error %v", err)
@@ -276,7 +276,7 @@ func TestReadQFXBadFile(t *testing.T) {
 
 func TestReadQFXWithEntryMissingName(t *testing.T) {
 	var loader autoimport.Loader
-	loader = QFXLoader{make(storeType)}
+	loader = &QFXLoader{make(storeType)}
 	r := strings.NewReader(kMissingNameQfx)
 	_, err := loader.Load(3, "", r, date_util.YMD(2012, 11, 14))
 	if err != nil {
@@ -292,7 +292,7 @@ func TestReadQFXWithEntryMissingName(t *testing.T) {
 func TestReadQFXMemoField(t *testing.T) {
 	r := strings.NewReader(kMemoQfx)
 	var loader autoimport.Loader
-	loader = QFXLoader{make(storeType)}
+	loader = &QFXLoader{make(storeType)}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2016, 8, 28))
 	if err != nil {
 		t.Errorf("Got error %v", err)
@@ -320,7 +320,7 @@ func TestReadQFXMemoField(t *testing.T) {
 func TestReadQFX(t *testing.T) {
 	r := strings.NewReader(kSampleQfx)
 	var loader autoimport.Loader
-	loader = QFXLoader{make(storeType)}
+	loader = &QFXLoader{make(storeType)}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2012, 11, 14))
 	if err != nil {
 		t.Errorf("Got error %v", err)
@@ -350,7 +350,7 @@ func TestReadQFX(t *testing.T) {
 
 	ramex := strings.NewReader(kAmexQfx)
 	var amexLoader autoimport.Loader
-	amexLoader = QFXLoader{make(storeType)}
+	amexLoader = &QFXLoader{make(storeType)}
 	amexBatch, err := amexLoader.Load(3, "", ramex, date_util.YMD(2012, 11, 14))
 	if err != nil {
 		t.Errorf("Got error loading amex %v", err)
@@ -379,7 +379,7 @@ func TestSkipProcessed(t *testing.T) {
 	r := strings.NewReader(kSampleQfx)
 	store := make(storeType)
 	var loader autoimport.Loader
-	loader = QFXLoader{store}
+	loader = &QFXLoader{store}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2012, 11, 14))
 	if err != nil {
 		t.Errorf("Got error %v", err)
@@ -416,7 +416,7 @@ func TestSkipProcessed(t *testing.T) {
 
 func TestMarkProcessed(t *testing.T) {
 	r := strings.NewReader(kSampleQfx)
-	loader := QFXLoader{make(storeType)}
+	loader := &QFXLoader{make(storeType)}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2012, 11, 14))
 	if err != nil {
 		t.Errorf("Got error %v", err)

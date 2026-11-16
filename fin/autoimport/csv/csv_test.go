@@ -51,7 +51,7 @@ Date, Time, Time Zone, Name, Type, Status, Amount, Receipt ID, Balance,
 func TestReadBadCsvFile(t *testing.T) {
 	r := strings.NewReader("A bad file\nNo CSV things in here\n")
 	var loader autoimport.Loader
-	loader = csv.CsvLoader{make(storeType)}
+	loader = &csv.CsvLoader{make(storeType)}
 	_, err := loader.Load(3, "", r, date_util.YMD(2012, 11, 14))
 	if err == nil {
 		t.Error("Expected error")
@@ -60,7 +60,7 @@ func TestReadBadCsvFile(t *testing.T) {
 
 func TestReadCsvWithEntryMissingName(t *testing.T) {
 	var loader autoimport.Loader
-	loader = csv.CsvLoader{make(storeType)}
+	loader = &csv.CsvLoader{make(storeType)}
 	r := strings.NewReader(kMissingNameCsv)
 	_, err := loader.Load(3, "", r, date_util.YMD(2015, 9, 3))
 	if err != nil {
@@ -76,7 +76,7 @@ func TestReadCsvWithEntryMissingName(t *testing.T) {
 func TestReadPaypalCsv(t *testing.T) {
 	r := strings.NewReader(kPaypalCsv)
 	var loader autoimport.Loader
-	loader = csv.CsvLoader{make(storeType)}
+	loader = &csv.CsvLoader{make(storeType)}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2015, 9, 3))
 	if err != nil {
 		t.Errorf("Got error %v", err)
@@ -104,7 +104,7 @@ func TestReadPaypalCsv(t *testing.T) {
 func TestReadChaseCsv(t *testing.T) {
 	r := strings.NewReader(kChaseCsv)
 	var loader autoimport.Loader
-	loader = csv.CsvLoader{make(storeType)}
+	loader = &csv.CsvLoader{make(storeType)}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2023, 10, 12))
 	if err != nil {
 		t.Errorf("Got error %v", err)
@@ -130,7 +130,7 @@ func TestReadChaseCsv(t *testing.T) {
 func TestReadChaseCsvNoCard(t *testing.T) {
 	r := strings.NewReader(kChaseCsvNoCard)
 	var loader autoimport.Loader
-	loader = csv.CsvLoader{make(storeType)}
+	loader = &csv.CsvLoader{make(storeType)}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2023, 10, 12))
 	if err != nil {
 		t.Errorf("Got error %v", err)
@@ -159,7 +159,7 @@ func TestReadChaseCsvFormatChanged(t *testing.T) {
 	// Chase CSV file format changes.
 	r := strings.NewReader(kChaseCsv)
 	var loader autoimport.Loader
-	loader = csv.CsvLoader{make(storeType)}
+	loader = &csv.CsvLoader{make(storeType)}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2023, 10, 12))
 	if err != nil {
 		t.Errorf("Got error %v", err)
@@ -186,7 +186,7 @@ func TestReadChaseCsvFormatChanged(t *testing.T) {
 func TestReadChaseCsvNoCardNoTransactions(t *testing.T) {
 	r := strings.NewReader(kChaseCsvNoCard)
 	var loader autoimport.Loader
-	loader = csv.CsvLoader{make(storeType)}
+	loader = &csv.CsvLoader{make(storeType)}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2023, 10, 13))
 	if err != nil {
 		t.Errorf("Got error %v", err)
@@ -198,7 +198,7 @@ func TestReadChaseCsvNoCardNoTransactions(t *testing.T) {
 func TestMarkProcessed(t *testing.T) {
 	r := strings.NewReader(kPaypalCsv)
 	fitIdStore := make(storeType)
-	loader := csv.CsvLoader{fitIdStore}
+	loader := &csv.CsvLoader{fitIdStore}
 	batch, err := loader.Load(3, "", r, date_util.YMD(2015, 9, 3))
 	if err != nil {
 		t.Errorf("Got error %v", err)

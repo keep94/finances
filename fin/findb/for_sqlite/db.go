@@ -49,16 +49,16 @@ const (
 	kSQLRemoveAllocation         = "delete from allocations where year = ? and expense_id = ?"
 )
 
-func New(db *sqlite3_db.Db) Store {
-	return Store{db}
+func New(db *sqlite3_db.Db) *Store {
+	return &Store{db}
 }
 
-func ConnNew(tx *sql.Tx) Store {
-	return Store{sqlite3_db.NewSqlite3Doer(tx)}
+func ConnNew(tx *sql.Tx) *Store {
+	return &Store{sqlite3_db.NewSqlite3Doer(tx)}
 }
 
-func ReadOnlyWrapper(store Store) ReadOnlyStore {
-	return ReadOnlyStore{store: store}
+func ReadOnlyWrapper(store *Store) *ReadOnlyStore {
+	return &ReadOnlyStore{store: store}
 }
 
 func entries(tx *sql.Tx, options *findb.EntryListOptions, consumer consume2.Consumer[fin.Entry]) error {
@@ -519,7 +519,7 @@ type Store struct {
 	db sqlite3_db.Doer
 }
 
-func (s Store) AccountById(
+func (s *Store) AccountById(
 	t db.Transaction, acctId int64, account *fin.Account) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.ReadSingle(
@@ -531,7 +531,7 @@ func (s Store) AccountById(
 	})
 }
 
-func (s Store) Accounts(
+func (s *Store) Accounts(
 	t db.Transaction, consumer consume2.Consumer[fin.Account]) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.ReadMultiple[fin.Account](
@@ -542,7 +542,7 @@ func (s Store) Accounts(
 	})
 }
 
-func (s Store) ActiveAccounts(t db.Transaction) (
+func (s *Store) ActiveAccounts(t db.Transaction) (
 	accounts []*fin.Account, err error) {
 	err = sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) (err error) {
 		accounts, err = activeAccounts(tx)
@@ -551,21 +551,21 @@ func (s Store) ActiveAccounts(t db.Transaction) (
 	return
 }
 
-func (s Store) AddAccount(t db.Transaction, account *fin.Account) error {
+func (s *Store) AddAccount(t db.Transaction, account *fin.Account) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.AddRow(
 			tx, (&rawAccount{}).init(account), &account.Id, kSQLInsertAccount)
 	})
 }
 
-func (s Store) DoEntryChanges(
+func (s *Store) DoEntryChanges(
 	t db.Transaction, changes *findb.EntryChanges) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return doEntryChanges(tx, changes)
 	})
 }
 
-func (s Store) Entries(
+func (s *Store) Entries(
 	t db.Transaction,
 	options *findb.EntryListOptions,
 	consumer consume2.Consumer[fin.Entry]) error {
@@ -574,21 +574,21 @@ func (s Store) Entries(
 	})
 }
 
-func (s Store) EntryById(
+func (s *Store) EntryById(
 	t db.Transaction, id int64, entry *fin.Entry) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return entryById(tx, id, entry)
 	})
 }
 
-func (s Store) UpdateAccountImportSD(
+func (s *Store) UpdateAccountImportSD(
 	t db.Transaction, acctId int64, date time.Time) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return updateAccountImportSD(tx, acctId, date)
 	})
 }
 
-func (s Store) UpdateAccount(
+func (s *Store) UpdateAccount(
 	t db.Transaction, account *fin.Account) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.UpdateRow(
@@ -596,7 +596,7 @@ func (s Store) UpdateAccount(
 	})
 }
 
-func (s Store) RemoveAccount(
+func (s *Store) RemoveAccount(
 	t db.Transaction, id int64) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		_, err := tx.Exec(kSQLRemoveAccount, id)
@@ -604,28 +604,28 @@ func (s Store) RemoveAccount(
 	})
 }
 
-func (s Store) AddUser(t db.Transaction, user *fin.User) error {
+func (s *Store) AddUser(t db.Transaction, user *fin.User) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.AddRow(
 			tx, (&rawUser{}).init(user), &user.Id, kSQLInsertUser)
 	})
 }
 
-func (s Store) RemoveUserByName(t db.Transaction, name string) error {
+func (s *Store) RemoveUserByName(t db.Transaction, name string) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		_, err := tx.Exec(kSQLRemoveUserByName, name)
 		return err
 	})
 }
 
-func (s Store) UpdateUser(t db.Transaction, user *fin.User) error {
+func (s *Store) UpdateUser(t db.Transaction, user *fin.User) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.UpdateRow(
 			tx, (&rawUser{}).init(user), kSQLUpdateUser)
 	})
 }
 
-func (s Store) UserById(
+func (s *Store) UserById(
 	t db.Transaction, id int64, user *fin.User) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.ReadSingle(
@@ -637,7 +637,7 @@ func (s Store) UserById(
 	})
 }
 
-func (s Store) UserByName(
+func (s *Store) UserByName(
 	t db.Transaction, name string, user *fin.User) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.ReadSingle(
@@ -649,7 +649,7 @@ func (s Store) UserByName(
 	})
 }
 
-func (s Store) Users(
+func (s *Store) Users(
 	t db.Transaction, consumer consume2.Consumer[fin.User]) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.ReadMultiple[fin.User](
@@ -660,7 +660,7 @@ func (s Store) Users(
 	})
 }
 
-func (s Store) AddRecurringEntry(
+func (s *Store) AddRecurringEntry(
 	t db.Transaction, entry *fin.RecurringEntry) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.AddRow(
@@ -671,7 +671,7 @@ func (s Store) AddRecurringEntry(
 	})
 }
 
-func (s Store) UpdateRecurringEntry(
+func (s *Store) UpdateRecurringEntry(
 	t db.Transaction, entry *fin.RecurringEntry) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.UpdateRow(
@@ -679,7 +679,7 @@ func (s Store) UpdateRecurringEntry(
 	})
 }
 
-func (s Store) RecurringEntryById(
+func (s *Store) RecurringEntryById(
 	t db.Transaction, id int64, entry *fin.RecurringEntry) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.ReadSingle(
@@ -691,7 +691,7 @@ func (s Store) RecurringEntryById(
 	})
 }
 
-func (s Store) RecurringEntries(
+func (s *Store) RecurringEntries(
 	t db.Transaction, consumer consume2.Consumer[fin.RecurringEntry]) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		return sqlite3_rw.ReadMultiple[fin.RecurringEntry](
@@ -702,14 +702,14 @@ func (s Store) RecurringEntries(
 	})
 }
 
-func (s Store) RemoveRecurringEntryById(t db.Transaction, id int64) error {
+func (s *Store) RemoveRecurringEntryById(t db.Transaction, id int64) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		_, err := tx.Exec(kSQLDeleteRecurringEntryById, id)
 		return err
 	})
 }
 
-func (s Store) AllocationsByYear(t db.Transaction, year int64) (
+func (s *Store) AllocationsByYear(t db.Transaction, year int64) (
 	result map[int64]int64, err error) {
 	err = sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) (err error) {
 		result, err = allocationsByYear(tx, year)
@@ -735,7 +735,7 @@ func allocationsByYear(tx *sql.Tx, year int64) (map[int64]int64, error) {
 	return result, nil
 }
 
-func (s Store) RemoveAllocation(
+func (s *Store) RemoveAllocation(
 	t db.Transaction, year, expenseId int64) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		_, err := tx.Exec(kSQLRemoveAllocation, year, expenseId)
@@ -743,7 +743,7 @@ func (s Store) RemoveAllocation(
 	})
 }
 
-func (s Store) AddAllocation(
+func (s *Store) AddAllocation(
 	t db.Transaction, year, expenseId, amount int64) error {
 	return sqlite3_db.ToDoer(s.db, t).Do(func(tx *sql.Tx) error {
 		_, err := tx.Exec(kSQLAddAllocation, year, expenseId, amount)
@@ -753,62 +753,62 @@ func (s Store) AddAllocation(
 
 type ReadOnlyStore struct {
 	findb.NoPermissionStore
-	store Store
+	store *Store
 }
 
-func (s ReadOnlyStore) AccountById(
+func (s *ReadOnlyStore) AccountById(
 	t db.Transaction, acctId int64, account *fin.Account) error {
 	return s.store.AccountById(t, acctId, account)
 }
 
-func (s ReadOnlyStore) Accounts(
+func (s *ReadOnlyStore) Accounts(
 	t db.Transaction, consumer consume2.Consumer[fin.Account]) error {
 	return s.store.Accounts(t, consumer)
 }
 
-func (s ReadOnlyStore) ActiveAccounts(t db.Transaction) (
+func (s *ReadOnlyStore) ActiveAccounts(t db.Transaction) (
 	accounts []*fin.Account, err error) {
 	return s.store.ActiveAccounts(t)
 }
 
-func (s ReadOnlyStore) Entries(
+func (s *ReadOnlyStore) Entries(
 	t db.Transaction,
 	options *findb.EntryListOptions,
 	consumer consume2.Consumer[fin.Entry]) error {
 	return s.store.Entries(t, options, consumer)
 }
 
-func (s ReadOnlyStore) EntryById(
+func (s *ReadOnlyStore) EntryById(
 	t db.Transaction, id int64, entry *fin.Entry) error {
 	return s.store.EntryById(t, id, entry)
 }
 
-func (s ReadOnlyStore) UserById(
+func (s *ReadOnlyStore) UserById(
 	t db.Transaction, id int64, user *fin.User) error {
 	return s.store.UserById(t, id, user)
 }
 
-func (s ReadOnlyStore) UserByName(
+func (s *ReadOnlyStore) UserByName(
 	t db.Transaction, name string, user *fin.User) error {
 	return s.store.UserByName(t, name, user)
 }
 
-func (s ReadOnlyStore) Users(
+func (s *ReadOnlyStore) Users(
 	t db.Transaction, consumer consume2.Consumer[fin.User]) error {
 	return s.store.Users(t, consumer)
 }
 
-func (s ReadOnlyStore) RecurringEntryById(
+func (s *ReadOnlyStore) RecurringEntryById(
 	t db.Transaction, id int64, entry *fin.RecurringEntry) error {
 	return s.store.RecurringEntryById(t, id, entry)
 }
 
-func (s ReadOnlyStore) RecurringEntries(
+func (s *ReadOnlyStore) RecurringEntries(
 	t db.Transaction, consumer consume2.Consumer[fin.RecurringEntry]) error {
 	return s.store.RecurringEntries(t, consumer)
 }
 
-func (s ReadOnlyStore) AllocationsByYear(t db.Transaction, year int64) (
+func (s *ReadOnlyStore) AllocationsByYear(t db.Transaction, year int64) (
 	map[int64]int64, error) {
 	return s.store.AllocationsByYear(t, year)
 }

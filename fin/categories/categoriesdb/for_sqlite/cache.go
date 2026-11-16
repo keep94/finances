@@ -15,8 +15,8 @@ func New(db *sqlite3_db.Db) *Cache {
 	return &Cache{db: db}
 }
 
-func ReadOnlyWrapper(c *Cache) ReadOnlyCache {
-	return ReadOnlyCache{cache: c}
+func ReadOnlyWrapper(c *Cache) *ReadOnlyCache {
+	return &ReadOnlyCache{cache: c}
 }
 
 type catDetailCache struct {
@@ -265,45 +265,45 @@ type ReadOnlyCache struct {
 	cache *Cache
 }
 
-func (c ReadOnlyCache) Get(t db.Transaction) (
+func (c *ReadOnlyCache) Get(t db.Transaction) (
 	cds categories.CatDetailStore, err error) {
 	return c.cache.Get(t)
 }
 
-func (c ReadOnlyCache) AccountAdd(t db.Transaction, name string) (
+func (c *ReadOnlyCache) AccountAdd(t db.Transaction, name string) (
 	cds categories.CatDetailStore, newId int64, err error) {
 	cds, err = c.reportNoPermission(t)
 	return
 }
 
-func (c ReadOnlyCache) AccountRename(t db.Transaction, id int64, name string) (
+func (c *ReadOnlyCache) AccountRename(t db.Transaction, id int64, name string) (
 	cds categories.CatDetailStore, err error) {
 	return c.reportNoPermission(t)
 }
 
-func (c ReadOnlyCache) AccountRemove(t db.Transaction, id int64) (
+func (c *ReadOnlyCache) AccountRemove(t db.Transaction, id int64) (
 	cds categories.CatDetailStore, err error) {
 	return c.reportNoPermission(t)
 }
 
-func (c ReadOnlyCache) Add(t db.Transaction, name string) (
+func (c *ReadOnlyCache) Add(t db.Transaction, name string) (
 	cds categories.CatDetailStore, newId fin.Cat, err error) {
 	cds, err = c.reportNoPermission(t)
 	return
 }
 
-func (c ReadOnlyCache) Remove(t db.Transaction, id fin.Cat) (
+func (c *ReadOnlyCache) Remove(t db.Transaction, id fin.Cat) (
 	cds categories.CatDetailStore, err error) {
 	return c.reportNoPermission(t)
 }
 
-func (c ReadOnlyCache) Rename(
+func (c *ReadOnlyCache) Rename(
 	t db.Transaction, id fin.Cat, newName string) (
 	cds categories.CatDetailStore, err error) {
 	return c.reportNoPermission(t)
 }
 
-func (c ReadOnlyCache) reportNoPermission(t db.Transaction) (
+func (c *ReadOnlyCache) reportNoPermission(t db.Transaction) (
 	cds categories.CatDetailStore, err error) {
 	cds, _ = c.cache.Get(t)
 	err = categoriesdb.NoPermission

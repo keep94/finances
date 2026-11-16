@@ -76,10 +76,10 @@ var (
 var (
 	kDoer                   db.Doer
 	kCatDetailCache         *csqlite.Cache
-	kStore                  for_sqlite.Store
+	kStore                  *for_sqlite.Store
 	kUploaders              map[string]autoimport.Loader
-	kReadOnlyCatDetailCache csqlite.ReadOnlyCache
-	kReadOnlyStore          for_sqlite.ReadOnlyStore
+	kReadOnlyCatDetailCache *csqlite.ReadOnlyCache
+	kReadOnlyStore          *for_sqlite.ReadOnlyStore
 	kReadOnlyUploaders      map[string]autoimport.Loader
 	kSessionStore           = ramstore.NewRAMStore(kSessionTimeout)
 	kClock                  date_util.SystemClock
@@ -321,16 +321,16 @@ func setupDb(filepath string) {
 	kDoer = sqlite3_db.NewDoer(dbase)
 	kCatDetailCache = csqlite.New(dbase)
 	kStore = for_sqlite.New(dbase)
-	qfxLoader := qfx.QFXLoader{Store: qfxdata}
-	csvLoader := csv.CsvLoader{Store: qfxdata}
+	qfxLoader := &qfx.QFXLoader{Store: qfxdata}
+	csvLoader := &csv.CsvLoader{Store: qfxdata}
 	kUploaders = map[string]autoimport.Loader{
 		".qfx": qfxLoader,
 		".ofx": qfxLoader,
 		".csv": csvLoader}
 	kReadOnlyCatDetailCache = csqlite.ReadOnlyWrapper(kCatDetailCache)
 	kReadOnlyStore = for_sqlite.ReadOnlyWrapper(kStore)
-	readOnlyQFXLoader := qfx.QFXLoader{Store: qfxdb.ReadOnlyWrapper(qfxdata)}
-	readOnlyCsvLoader := csv.CsvLoader{Store: qfxdb.ReadOnlyWrapper(qfxdata)}
+	readOnlyQFXLoader := &qfx.QFXLoader{Store: qfxdb.ReadOnlyWrapper(qfxdata)}
+	readOnlyCsvLoader := &csv.CsvLoader{Store: qfxdb.ReadOnlyWrapper(qfxdata)}
 	kReadOnlyUploaders = map[string]autoimport.Loader{
 		".qfx": readOnlyQFXLoader,
 		".ofx": readOnlyQFXLoader,

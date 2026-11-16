@@ -48,11 +48,11 @@ type ReadOnlyStore struct {
 	store Store
 }
 
-func ReadOnlyWrapper(s Store) ReadOnlyStore {
-	return ReadOnlyStore{store: s}
+func ReadOnlyWrapper(s Store) *ReadOnlyStore {
+	return &ReadOnlyStore{store: s}
 }
 
-func (s ReadOnlyStore) Find(
+func (s *ReadOnlyStore) Find(
 	t db.Transaction, accountId int64, fitIds FitIdSet) (
 	found FitIdSet, err error) {
 	return s.store.Find(t, accountId, fitIds)

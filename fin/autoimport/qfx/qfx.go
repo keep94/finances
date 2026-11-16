@@ -39,7 +39,7 @@ type QFXLoader struct {
 	Store qfxdb.Store
 }
 
-func (q QFXLoader) Load(
+func (q *QFXLoader) Load(
 	accountId int64,
 	bankAccountId string,
 	r io.Reader,

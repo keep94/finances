@@ -22,7 +22,7 @@ type CsvLoader struct {
 	Store qfxdb.Store
 }
 
-func (c CsvLoader) Load(
+func (c *CsvLoader) Load(
 	accountId int64,
 	bankAccountId string,
 	r io.Reader,

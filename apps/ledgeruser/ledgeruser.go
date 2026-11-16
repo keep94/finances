@@ -204,7 +204,7 @@ func openDb(dbPath string) *sqlite3_db.Db {
 }
 
 func initDb(dbase *sqlite3_db.Db) (
-	store for_sqlite.Store, doer db.Doer, ok bool) {
+	store *for_sqlite.Store, doer db.Doer, ok bool) {
 	err := dbase.Do(sqlite_setup.SetUpTables)
 	if err != nil {
 		fmt.Printf("Unable to create tables - %v\n", err)
