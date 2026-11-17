@@ -26,33 +26,31 @@ type Store interface {
 	Find(t db.Transaction, accountId int64, fitIds FitIdSet) (FitIdSet, error)
 }
 
-// NoPermissionStore implements Store by always returning NoPermission
-// error.
-type NoPermissionStore struct {
+type noPermissionStore struct {
 }
 
-func (n NoPermissionStore) Add(
+func (n noPermissionStore) Add(
 	t db.Transaction, accountId int64, fitIds FitIdSet) error {
 	return NoPermission
 }
 
-func (n NoPermissionStore) Find(
+func (n noPermissionStore) Find(
 	t db.Transaction, accountId int64, fitIds FitIdSet) (
 	found FitIdSet, err error) {
 	err = NoPermission
 	return
 }
 
-type ReadOnlyStore struct {
-	NoPermissionStore
+type readOnlyStore struct {
+	noPermissionStore
 	store Store
 }
 
-func ReadOnlyWrapper(s Store) *ReadOnlyStore {
-	return &ReadOnlyStore{store: s}
+func ReadOnlyWrapper(s Store) Store {
+	return &readOnlyStore{store: s}
 }
 
-func (s *ReadOnlyStore) Find(
+func (s *readOnlyStore) Find(
 	t db.Transaction, accountId int64, fitIds FitIdSet) (
 	found FitIdSet, err error) {
 	return s.store.Find(t, accountId, fitIds)
