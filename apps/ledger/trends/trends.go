@@ -263,15 +263,16 @@ func (h *Handler) singleCat(
 	topOnly bool,
 	start, end time.Time,
 	isYearly bool) (points []*dataPoint, barGraph *google_jsgraph.BarGraph, cats fin.CatSet, err error) {
+
 	// Only to see what the child categories are
 	ct := make(fin.CatTotals)
+
 	totals := createByPeriodTotaler(start, end, isYearly)
-	cr := consume2.Filterp(
-		consume2.Compose(
-			consumers.FromCatPaymentAggregator(ct),
-			consumers.FromEntryAggregator(totals)),
-		filters.CompileAdvanceSearchSpec(
-			&filters.AdvanceSearchSpec{CF: cds.Filter(cat, !topOnly)}))
+	filter := filters.CompileAdvanceSearchSpec(
+		&filters.AdvanceSearchSpec{CF: cds.Filter(cat, !topOnly)})
+	cr := consume2.Compose(
+		consumers.FromCatPaymentAggregator(ct),
+		consume2.Filterp(consumers.FromEntryAggregator(totals), filter))
 	elo := findb.EntryListOptions{
 		Start: &start,
 		End:   &end}
